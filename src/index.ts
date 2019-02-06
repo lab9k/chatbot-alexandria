@@ -107,7 +107,7 @@ const userState = new UserState(memoryStorage);
 // conversationState = new ConversationState(blobStorage);
 
 // Create the EchoBot.
-const bot = new CityBot();
+const bot = new CityBot(conversationState, userState);
 
 // Create HTTP server
 const server = restify.createServer();
