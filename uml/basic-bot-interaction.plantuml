@@ -1,0 +1,24 @@
+@startuml bot
+title conversation flow
+scale 2
+
+actor person order 10
+actor employee order 40
+participant bot order 20
+participant "citynet api" as ca order 30
+
+person -> bot : question
+bot -> ca ++: dispatch question
+ca -> bot -- : documents
+bot -> person : response
+alt good response
+    person -> bot : Finish / silent
+    bot -> person : Thank you for using
+else bad response
+    person -> bot : request service employee
+    bot -> employee ++: email
+    bot -> person : help is on the way
+    ...Some time later...
+    employee -> person --: help
+end
+@enduml
