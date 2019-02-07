@@ -36,7 +36,14 @@ export class CityBot {
         const dialogContext = await this.dialogs.createContext(turnContext);
         if (!dialogContext.context.activity.text.includes('manager')) {
           // Normal flow
-          dialogContext.beginDialog(QuestionDialog.ID);
+          console.log('normal flow');
+          // ? continue the multistep dialog that's already begun
+          // ? won't do anything if there is no running dialog
+          await dialogContext.continueDialog();
+          // ? if no outstanding dialog / no one responded
+          if (!dialogContext.context.responded) {
+            await dialogContext.beginDialog(QuestionDialog.ID);
+          }
         } else {
           // User would like to talk to the manager
         }
@@ -47,8 +54,7 @@ export class CityBot {
       default:
         break;
     }
-    await this.userState.saveChanges(turnContext);
-    await this.conversationState.saveChanges(turnContext);
+    await this.saveChanges(turnContext);
   }
 
   private async welcomeUser(turnContext: TurnContext) {
@@ -72,5 +78,9 @@ export class CityBot {
         }
       }
     }
+  }
+  private async saveChanges(tc: TurnContext) {
+    await this.userState.saveChanges(tc);
+    await this.conversationState.saveChanges(tc);
   }
 }
