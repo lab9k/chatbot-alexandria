@@ -1,7 +1,9 @@
 import { WaterfallDialog, WaterfallStepContext } from 'botbuilder-dialogs';
 import { MessageFactory, ActivityTypes, CardFactory } from 'botbuilder';
 import CitynetApi from '../api/CitynetApi';
-import { ResponseTypes } from './ResponseTypes';
+import { FeedbackTypes } from '../models/FeedbackTypes';
+import { map } from 'lodash';
+
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
   private readonly api: CitynetApi;
@@ -19,32 +21,58 @@ export default class QuestionDialog extends WaterfallDialog {
     await sctx.context.sendActivity({ type: ActivityTypes.Typing });
     const resolved = await this.api.query(sctx.context.activity.text);
 
-    const c = MessageFactory.carousel([
-      CardFactory.thumbnailCard(resolved, 'short description', [
-        'https://cdn.vox-cdn.com/thumbor/AX7FqhqX3IOHrvzzNstp9EwMvEE=' +
-          '/0x114:585x559/920x613/filters:focal(248x297:340x389):format(webp)' +
-          '/cdn.vox-cdn.com/uploads/chorus_image/image/57272301' +
-          '/Screen_Shot_2017_10_23_at_10.16.32_AM.0.png',
-      ]),
-      CardFactory.thumbnailCard(
-        resolved,
-        'Lorem ipsum dolor sit amet, ' +
-          'consectetur adipiscing elit. Vestibulum ut est eros. Nam' +
-          ' ullamcorper malesuada magna, nec semper tellus. Donec vel' +
-          ' tristique ante, rhoncus egestas. ',
-        [],
-        [],
-        {
-          subtitle: 'subtitle',
-        },
-      ),
-    ]);
-    await sctx.context.sendActivity(c);
+    const cards = map(resolved.documents, (document) => {
+      // TODO: map to custom cards
+      return CardFactory.adaptiveCard({
+        $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+        type: 'AdaptiveCard',
+        version: '1.0',
+        body: [
+          {
+            type: 'Container',
+            items: [
+              {
+                type: 'TextBlock',
+                text: document.summary,
+                size: 'large',
+                isSubtle: true,
+              },
+            ],
+          },
+          {
+            type: 'Container',
+            spacing: 'none',
+            items: [
+              {
+                type: 'ColumnSet',
+                columns: [
+                  {
+                    type: 'Column',
+                    width: 'stretch',
+                    items: [
+                      {
+                        type: 'TextBlock',
+                        text: `Confidence: ${document.scoreInPercent}`,
+                        size: 'small',
+                        color: 'attention',
+                        spacing: 'none',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    await sctx.context.sendActivity(MessageFactory.carousel(cards));
 
     await this.waitFor(sctx, async () => {
       await sctx.context.sendActivity(
         MessageFactory.suggestedActions(
-          [ResponseTypes.GOOD, ResponseTypes.BAD],
+          [FeedbackTypes.GOOD, FeedbackTypes.BAD],
           'Where these documents usefull?',
         ),
       );
