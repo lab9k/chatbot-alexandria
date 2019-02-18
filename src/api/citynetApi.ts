@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { stringify } from 'querystring';
 import * as moment from 'moment';
 import QueryResponse from '../models/QueryResponse';

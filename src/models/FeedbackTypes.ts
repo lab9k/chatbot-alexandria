@@ -1,4 +1,4 @@
 export enum FeedbackTypes {
-  GOOD = 'usefull',
-  BAD = 'not usefull',
+  GOOD = 'nuttig',
+  BAD = 'niet nuttig',
 }

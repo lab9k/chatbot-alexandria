@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// Licensed under the MIT License.
-
 import {
   ActivityTypes,
   TurnContext,
@@ -8,12 +5,16 @@ import {
   UserState,
   StatePropertyAccessor,
 } from 'botbuilder';
-import { DialogSet } from 'botbuilder-dialogs';
+import { DialogSet, ConfirmPrompt, DialogReason } from 'botbuilder-dialogs';
 import QuestionDialog from './dialogs/QuestionDialog';
+import FeedbackPrompt from './dialogs/FeedbackPrompt';
+import lang from './lang';
+
 const DIALOG_STATE_PROPERTY = 'dialog_state_prop';
 export class CityBot {
   private readonly dialogState: StatePropertyAccessor<any>;
   private readonly dialogs: DialogSet;
+  private readonly questionDialog: QuestionDialog;
 
   constructor(
     private conversationState: ConversationState,
@@ -25,36 +26,49 @@ export class CityBot {
     this.dialogs = new DialogSet(this.dialogState);
 
     // Add all dialogs
-    [new QuestionDialog()].forEach((dialog) => {
+    this.questionDialog = new QuestionDialog();
+    [
+      this.questionDialog,
+      new FeedbackPrompt(),
+      new ConfirmPrompt('confirm_prompt'),
+    ].forEach((dialog) => {
       this.dialogs.add(dialog);
     });
   }
 
   async onTurn(turnContext: TurnContext) {
-    switch (turnContext.activity.type) {
-      case ActivityTypes.Message:
-        const dialogContext = await this.dialogs.createContext(turnContext);
-        if (!dialogContext.context.activity.text.includes('manager')) {
-          // Normal flow
-          console.log('normal flow');
-          // ? continue the multistep dialog that's already begun
-          // ? won't do anything if there is no running dialog
-          await dialogContext.continueDialog();
-          // ? if no outstanding dialog / no one responded
-          if (!dialogContext.context.responded) {
-            await dialogContext.beginDialog(QuestionDialog.ID);
-          }
-        } else {
-          // User would like to talk to the manager
-        }
-        break;
-      case ActivityTypes.ConversationUpdate:
+    const options = {
+      [ActivityTypes.Message]: async () => {
+        await this.handleDialog(turnContext);
+      },
+      [ActivityTypes.ConversationUpdate]: async () => {
         await this.welcomeUser(turnContext);
-        break;
-      default:
-        break;
-    }
+      },
+    };
+    await options[turnContext.activity.type]();
     await this.saveChanges(turnContext);
+  }
+
+  private async handleDialog(turnContext: TurnContext) {
+    const dialogContext = await this.dialogs.createContext(turnContext);
+
+    // ? continue the multistep dialog that's already begun
+    // ? won't do anything if there is no running dialog
+    if (dialogContext.context.activity.text) {
+      await dialogContext.continueDialog();
+    } else if (dialogContext.context.activity.value) {
+      await dialogContext.context.sendActivity(
+        dialogContext.context.activity.value.content,
+      );
+      // TODO : fix
+      // await this.questionDialog.askFeedback(dialogContext);
+      await dialogContext.repromptDialog();
+    }
+
+    // ? if no outstanding dialog / no one responded
+    if (!dialogContext.context.responded) {
+      await dialogContext.beginDialog(QuestionDialog.ID);
+    }
   }
 
   private async welcomeUser(turnContext: TurnContext) {
@@ -71,10 +85,7 @@ export class CityBot {
           turnContext.activity.recipient.id
         ) {
           // Send a "this is what the bot does" message to this user.
-          await turnContext.sendActivity(
-            `I'm a bot you can ask questions about q-besluit in Ghent,
-            ask me any question and i will respond as accurately as possible.`,
-          );
+          await turnContext.sendActivity(lang.getStringFor(lang.WELCOME));
         }
       }
     }
