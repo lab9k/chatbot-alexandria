@@ -12,7 +12,6 @@ import FeedbackPrompt from './FeedbackPrompt';
 import lang from '../lang';
 
 import DocumentCard from '../models/DocumentCard';
-import { SuggestedActions } from 'botframework-connector/lib/connectorApi/models/mappers';
 
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
@@ -74,7 +73,7 @@ export default class QuestionDialog extends WaterfallDialog {
       await sctx.prompt('confirm_prompt', {
         prompt: lang.getStringFor(lang.REAL_PERSON),
         retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-        suggestedActions: ['Ja', 'Nee'],
+        choices: [lang.POSITIVE, lang.NEGATIVE],
       });
     }
   }
@@ -89,7 +88,9 @@ export default class QuestionDialog extends WaterfallDialog {
   }
 
   private async handlePersonRequest(sctx: WaterfallStepContext) {
-    if (sctx.context.activity.text.toUpperCase() === 'YES') {
+    if (
+      sctx.context.activity.text.toUpperCase() === lang.POSITIVE.toUpperCase()
+    ) {
       await sctx.context.sendActivity(lang.getStringFor(lang.EMAIL_SENT));
     } else {
       await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));

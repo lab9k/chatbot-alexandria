@@ -10,6 +10,8 @@ export default new class {
   public readonly THANK_FEEDBACK = 'thank_feedback';
   public readonly REAL_PERSON = 'real_person';
   public readonly EMAIL_SENT = 'email_sent';
+  public readonly POSITIVE = 'Ja';
+  public readonly NEGATIVE = 'Nee';
 
   private options = {
     [this.WELCOME]: [
@@ -50,9 +52,14 @@ export default new class {
       'Heb je nog meer vragen? Wees niet bang om ze hier te stellen.',
       'Indien je nog vragen hebt, kan je ze hier stellen.',
     ],
+    default: [],
   };
 
+  // private get data() {
+  //   return <any>data;
+  // }
+
   getStringFor(key: string): string {
-    return sample(this.options[key] || []) || new Error('No translation found');
+    return sample(this.options[key] || this.options.default);
   }
 }();

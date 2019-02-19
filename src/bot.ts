@@ -5,7 +5,7 @@ import {
   UserState,
   StatePropertyAccessor,
 } from 'botbuilder';
-import { DialogSet, ConfirmPrompt, DialogReason } from 'botbuilder-dialogs';
+import { DialogSet, ConfirmPrompt, ChoicePrompt } from 'botbuilder-dialogs';
 import QuestionDialog from './dialogs/QuestionDialog';
 import FeedbackPrompt from './dialogs/FeedbackPrompt';
 import lang from './lang';
@@ -30,7 +30,7 @@ export class CityBot {
     [
       this.questionDialog,
       new FeedbackPrompt(),
-      new ConfirmPrompt('confirm_prompt'),
+      new ChoicePrompt('confirm_prompt'),
     ].forEach((dialog) => {
       this.dialogs.add(dialog);
     });
@@ -60,8 +60,6 @@ export class CityBot {
       await dialogContext.context.sendActivity(
         dialogContext.context.activity.value.content,
       );
-      // TODO : fix
-      // await this.questionDialog.askFeedback(dialogContext);
       await dialogContext.repromptDialog();
     }
 
