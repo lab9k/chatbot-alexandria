@@ -38,16 +38,18 @@ export default class CitynetApi {
       });
   }
 
-  public async login() {
+  public async login(): Promise<{ value: string; date: string }> {
     const { headers } = await axios.post(
       'https://api.cloud.nalantis.com/auth/v2/users/login',
       stringify(this.getCredentials()),
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
     );
-    this.token = {
+    const token = {
       value: headers.authorization.split('Bearer ')[1],
       date: headers.date,
     };
+    this.token = token;
+    return token;
   }
 
   private getCredentials(): { login: string; password: string } {
