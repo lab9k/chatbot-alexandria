@@ -12,12 +12,13 @@ export default new class {
   public readonly EMAIL_SENT = 'email_sent';
   public readonly POSITIVE = 'Ja';
   public readonly NEGATIVE = 'Nee';
+  public readonly READ_MORE = 'lees_meer';
 
   private options = {
     [this.WELCOME]: [
       `Hallo!
-      Ik ben een bot, mij kan je verschillende vragen stellen over q-besluit in Gent.`,
-      `Ik ben een bot die je vragen kan stellen over besluitvorming in Gent`,
+      Ik ben een bot, mij kan je verschillende vragen stellen over e-besluitvorming in Gent.`,
+      `Ik ben een bot die je vragen kan stellen over e-besluitvorming in Gent`,
     ],
     [this.WAIT_WHILE_FETCH]: [
       `Even geduld terwijl ik de juiste documenten zoek.`,
@@ -52,6 +53,7 @@ export default new class {
       'Heb je nog meer vragen? Wees niet bang om ze hier te stellen.',
       'Indien je nog vragen hebt, kan je ze hier stellen.',
     ],
+    [this.READ_MORE]: ['Lees meer (lange tekst)'],
     default: [],
   };
 

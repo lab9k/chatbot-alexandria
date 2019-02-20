@@ -7,6 +7,7 @@ import {
   SubmitAction,
 } from 'adaptivecards';
 import { take } from 'lodash';
+import lang from '../lang';
 export default class DocumentCard {
   private readonly internalCard: AdaptiveCard;
 
@@ -39,7 +40,7 @@ export default class DocumentCard {
   public addAction(document: Document): DocumentCard {
     const action = new SubmitAction();
     action.data = { content: document.content };
-    action.title = 'Read more (long text)';
+    action.title = lang.getStringFor(lang.READ_MORE);
     this.internalCard.addAction(action);
     return this;
   }
