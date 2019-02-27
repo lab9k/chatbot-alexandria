@@ -13,6 +13,8 @@ export default new class {
   public readonly POSITIVE = 'Ja';
   public readonly NEGATIVE = 'Nee';
   public readonly READ_MORE = 'lees_meer';
+  public readonly ASK_CORRECT_CONCEPTS = 'ask_correct_concepts';
+  public readonly REPHRASE = 'rephrase_question';
 
   private options = {
     [this.WELCOME]: [
@@ -54,6 +56,14 @@ export default new class {
       'Indien je nog vragen hebt, kan je ze hier stellen.',
     ],
     [this.READ_MORE]: ['Lees meer (lange tekst)'],
+    [this.ASK_CORRECT_CONCEPTS]: [
+      'Ik heb documenten teruggevonden over: "%1%", is dit correct?',
+      'Ik heb een jouw vraag gelinkt aan de volgende concepten:\n"%1%"\nKlopt dit?',
+    ],
+    [this.REPHRASE]: [
+      'Kan je de vraag op een andere manier stellen zodat ik in het juiste domein ga zoeken?',
+      'Gelieve de vraag iets specifieker te maken, zodat ik op de juiste plek ga zoeken',
+    ],
     default: [],
   };
 
