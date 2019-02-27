@@ -30,10 +30,10 @@ export default class CitynetApi {
           Authorization: `Bearer ${this.token.value}`,
         },
       })
-      .then((d) => {
+      .then(d => {
         return d.data;
       })
-      .catch((err) => {
+      .catch(err => {
         throw err;
       });
   }

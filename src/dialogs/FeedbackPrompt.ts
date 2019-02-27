@@ -1,4 +1,4 @@
-import { Prompt, ConfirmPrompt, ChoiceFactory } from 'botbuilder-dialogs';
+import { ConfirmPrompt } from 'botbuilder-dialogs';
 import { FeedbackTypes } from '../models/FeedbackTypes';
 
 export default class FeedbackPrompt extends ConfirmPrompt {

@@ -9,6 +9,7 @@ import { DialogSet, ConfirmPrompt, ChoicePrompt } from 'botbuilder-dialogs';
 import QuestionDialog from './dialogs/QuestionDialog';
 import FeedbackPrompt from './dialogs/FeedbackPrompt';
 import lang from './lang';
+import CorrectConceptPrompt from './dialogs/CorrectConceptPrompt';
 
 const DIALOG_STATE_PROPERTY = 'dialog_state_prop';
 export class CityBot {
@@ -26,12 +27,13 @@ export class CityBot {
     this.dialogs = new DialogSet(this.dialogState);
 
     // Add all dialogs
-    this.questionDialog = new QuestionDialog();
+    this.questionDialog = new QuestionDialog(userState);
     [
       this.questionDialog,
       new FeedbackPrompt(),
       new ChoicePrompt('confirm_prompt'),
-    ].forEach((dialog) => {
+      new CorrectConceptPrompt(),
+    ].forEach(dialog => {
       this.dialogs.add(dialog);
     });
   }
