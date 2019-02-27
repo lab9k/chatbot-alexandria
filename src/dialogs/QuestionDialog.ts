@@ -72,9 +72,9 @@ export default class QuestionDialog extends WaterfallDialog {
           )
           .join(', ');
       await sctx.prompt(CorrectConceptPrompt.ID, {
-        prompt: `Can i assume you are talking about "${formatConcepts(
-          resolved.conceptsOfQuery,
-        )}"?`,
+        prompt: lang
+          .getStringFor(lang.ASK_CORRECT_CONCEPTS)
+          .replace('%1%', formatConcepts(resolved.conceptsOfQuery)),
         retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
       });
     });
@@ -83,9 +83,7 @@ export default class QuestionDialog extends WaterfallDialog {
   private async handleConcept(sctx: WaterfallStepContext) {
     const answer = sctx.context.activity.text;
     if (answer === ConfirmTypes.POSITIVE) {
-      const resolved: QueryResponse = await this.docsAccessor.get(
-        sctx.context,
-      );
+      const resolved: QueryResponse = await this.docsAccessor.get(sctx.context);
       const cards = map(
         sortBy(resolved.documents, 'scoreInPercent').reverse(),
         document => {
@@ -105,9 +103,7 @@ export default class QuestionDialog extends WaterfallDialog {
         });
       });
     } else if (answer === ConfirmTypes.NEGATIVE) {
-      await sctx.context.sendActivity(
-        'Try asking the question in another way so i can understand it.',
-      );
+      await sctx.context.sendActivity(lang.getStringFor(lang.REPHRASE));
       await sctx.endDialog();
     }
   }
