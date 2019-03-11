@@ -63,3 +63,4 @@ typings/
 .vscode/
 lib/
 .DS_Store
+downloads/
