@@ -2,7 +2,6 @@ import {
   WaterfallDialog,
   WaterfallStepContext,
   DialogContext,
-  DialogReason,
 } from 'botbuilder-dialogs';
 import {
   MessageFactory,
@@ -10,17 +9,24 @@ import {
   CardFactory,
   UserState,
   StatePropertyAccessor,
+  ActionTypes,
+  Activity,
 } from 'botbuilder';
 import CitynetApi from '../api/CitynetApi';
 import { FeedbackTypes } from '../models/FeedbackTypes';
-import { map, sortBy } from 'lodash';
+import { map, sortBy, take } from 'lodash';
 import FeedbackPrompt from './FeedbackPrompt';
 import lang from '../lang';
 
-import DocumentCard from '../models/DocumentCard';
 import QueryResponse from '../models/QueryResponse';
 import CorrectConceptPrompt from './CorrectConceptPrompt';
 import { ConfirmTypes } from '../models/ConfirmTypes';
+import { readFileSync, createReadStream } from 'fs';
+import { ChannelId } from '../models/ChannelIds';
+import { FacebookCardBuilder, FacebookCard } from '../models/FacebookCard';
+import nodeFetch from 'node-fetch';
+import * as FormData from 'form-data';
+import * as path from 'path';
 
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
@@ -60,6 +66,11 @@ export default class QuestionDialog extends WaterfallDialog {
     await this.docsAccessor.set(sctx.context, resolved);
 
     // ? ask if concept is correct
+    if (!resolved.conceptsOfQuery) {
+      console.log('no concepts, skipping question');
+      await sctx.next();
+      return await this.handleConcept(sctx, true);
+    }
 
     await this.waitFor(sctx, async () => {
       const formatConcepts = (conceptsArray: string[]) =>
@@ -74,28 +85,52 @@ export default class QuestionDialog extends WaterfallDialog {
       await sctx.prompt(CorrectConceptPrompt.ID, {
         prompt: lang
           .getStringFor(lang.ASK_CORRECT_CONCEPTS)
-          .replace('%1%', formatConcepts(resolved.conceptsOfQuery)),
+          .replace('%1%', formatConcepts(resolved.conceptsOfQuery || [])),
         retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
       });
     });
   }
 
-  private async handleConcept(sctx: WaterfallStepContext) {
+  private async handleConcept(sctx: WaterfallStepContext, skipped?: boolean) {
     const answer = sctx.context.activity.text;
-    if (answer === ConfirmTypes.POSITIVE) {
+    if (answer === ConfirmTypes.POSITIVE || skipped) {
       const resolved: QueryResponse = await this.docsAccessor.get(sctx.context);
-      const cards = map(
-        sortBy(resolved.documents, 'scoreInPercent').reverse(),
-        document => {
-          const documentCard = new DocumentCard()
-            .addTitle()
-            .addSummary(document)
-            .addConfidenceLevel(document)
-            .addAction(document);
-          return CardFactory.adaptiveCard(documentCard.card);
-        },
-      );
-      await sctx.context.sendActivity(MessageFactory.carousel(cards));
+      if (sctx.context.activity.channelId === ChannelId.Facebook) {
+        const fbCardBuilder = new FacebookCardBuilder();
+        resolved.documents.forEach((doc, i) =>
+          fbCardBuilder.addCard(
+            new FacebookCard(
+              `Document ${i}`,
+              `${take(doc.summary.split(' '), 50).join(' ')}...`,
+              {
+                type: 'postback',
+                title: 'Download pdf',
+                payload: JSON.stringify({ content: doc.resourceURI }),
+              },
+            ),
+          ),
+        );
+        await sctx.context.sendActivity(fbCardBuilder.getData());
+      } else {
+        const cards = map(
+          sortBy(resolved.documents, 'scoreInPercent').reverse(),
+          document => {
+            return CardFactory.heroCard(
+              `${take(document.content.split(' '), 5).join(' ')}...`,
+              `${take(document.content.split(' '), 20).join(' ')}...`,
+              [],
+              [
+                {
+                  value: { content: document.resourceURI },
+                  type: ActionTypes.PostBack,
+                  title: 'download document',
+                },
+              ],
+            );
+          },
+        );
+        await sctx.context.sendActivity(MessageFactory.carousel(cards));
+      }
       await this.waitFor(sctx, async () => {
         await sctx.prompt(FeedbackPrompt.ID, {
           prompt: lang.getStringFor(lang.USEFULLNESS_QUERY),
@@ -144,6 +179,62 @@ export default class QuestionDialog extends WaterfallDialog {
       await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
     }
     await sctx.endDialog();
+  }
+
+  public async sendFile(
+    dialogContext: DialogContext,
+    payload: { content: string },
+  ): Promise<any> {
+    const resourceUri: string = payload.content;
+
+    console.log('downloading');
+    const ret = await this.api.downloadFile(resourceUri);
+
+    const filedata = readFileSync(`./downloads/${ret.filename}`);
+    const base64file = Buffer.from(filedata).toString('base64');
+
+    // TODO: split fb and other channels
+    if (dialogContext.context.activity.channelId === ChannelId.Facebook) {
+      const filePath = path.resolve(
+        __dirname,
+        '..',
+        '..',
+        'downloads',
+        ret.filename,
+      );
+      console.log(filePath);
+      const fd = new FormData();
+      fd.append('file', ret.buffer, {
+        filename: ret.filename,
+        contentType: ret.contentType,
+      });
+      return nodeFetch('http://file.io/?expires=1d', {
+        method: 'POST',
+        body: fd,
+      })
+        .then(async res => res.json())
+        .then(async res => {
+          console.log(res);
+          await dialogContext.context.sendActivity(
+            'Ik stuur je de downloadlink onmiddelijk door.',
+          );
+          return this.waitFor(dialogContext, async () => {
+            return await dialogContext.context.sendActivity(`${res.link}`);
+          });
+        });
+    }
+    const reply = {
+      type: ActivityTypes.Message,
+      attachments: [
+        {
+          name: ret.filename,
+          contentUrl: `data:${ret.contentType};base64,${base64file}`,
+          contentType: ret.contentType,
+        },
+      ],
+    };
+
+    return await dialogContext.context.sendActivity(reply);
   }
 
   private async waitFor(sctx: DialogContext, cb: Function): Promise<any> {

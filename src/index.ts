@@ -55,7 +55,7 @@ const DEV_ENVIRONMENT = 'development';
 
 // Define name of the endpoint configuration section from the .bot file.
 const BOT_CONFIGURATION = process.env.NODE_ENV || DEV_ENVIRONMENT;
-
+// const BOT_CONFIGURATION = DEV_ENVIRONMENT;
 // Get bot endpoint configuration by service name.
 // Bot configuration as defined in .bot file.
 const endpointConfig = botConfig.findServiceByNameOrId(
@@ -73,6 +73,11 @@ const adapter = new BotFrameworkAdapter({
 adapter.onTurnError = async (context, error) => {
   // This check writes out errors to console log .vs. app insights.
   console.error(`\n [onTurnError]: ${error}`);
+  console.log(error.stack);
+  if (error.message === 'Facebook API error') {
+    console.log(JSON.stringify(error['response'].body));
+  }
+
   // Send a message to the user.
   await context.sendActivity(`Oops. Something went wrong!`);
   // Clear out state
@@ -111,6 +116,49 @@ const bot = new CityBot(conversationState, userState);
 
 // Create HTTP server
 const server = restify.createServer();
+server.use(restify.plugins.queryParser());
+
+// Listen for incoming activities and route them to your bot for processing.
+server.post('/api/messages', (req, res) => {
+  adapter.processActivity(req, res, async turnContext => {
+    // Call bot.onTurn() to handle all incoming messages.
+    await bot.onTurn(turnContext);
+  });
+});
+
+server.get('/api/messages', (req, res, next) => {
+  // Your verify token. Should be a random string.
+  const VERIFY_TOKEN = 'test';
+
+  // Parse the query params
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  // Checks if a token and mode is in the query string of the request
+  if (mode && token) {
+    // Checks the mode and token sent is correct
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      // Responds with the challenge token from the request
+      console.log('WEBHOOK_VERIFIED');
+      res.sendRaw(200, challenge);
+      next();
+    } else {
+      // Responds with '403 Forbidden' if verify tokens do not match
+      res.status(403);
+      next();
+    }
+  }
+});
+
+server.get(
+  '/static/*',
+  restify.plugins.serveStatic({
+    directory: path.resolve(__dirname, '..', 'downloads'),
+    appendRequestPath: false,
+  }),
+);
+
 server.listen(process.env.port || process.env.PORT || 3978, () => {
   console.log(`\n${server.name} listening to ${server.url}`);
   console.log(
@@ -119,12 +167,7 @@ server.listen(process.env.port || process.env.PORT || 3978, () => {
   console.log(
     `\nTo talk to your bot, open echobot-with-counter.bot file in the Emulator.`,
   );
-});
-
-// Listen for incoming activities and route them to your bot for processing.
-server.post('/api/messages', (req, res) => {
-  adapter.processActivity(req, res, async (turnContext) => {
-    // Call bot.onTurn() to handle all incoming messages.
-    await bot.onTurn(turnContext);
-  });
+  console.log(`ENVIRONMENT:
+  BOT_CONFIGURATION: ${BOT_CONFIGURATION}
+  `);
 });

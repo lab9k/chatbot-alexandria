@@ -55,7 +55,7 @@ export default new class {
       'Heb je nog meer vragen? Wees niet bang om ze hier te stellen.',
       'Indien je nog vragen hebt, kan je ze hier stellen.',
     ],
-    [this.READ_MORE]: ['Lees meer (lange tekst)'],
+    [this.READ_MORE]: ['Download pdf'],
     [this.ASK_CORRECT_CONCEPTS]: [
       'Ik heb documenten teruggevonden over: "%1%", is dit correct?',
       'Ik heb een jouw vraag gelinkt aan de volgende concepten:\n"%1%"\nKlopt dit?',

@@ -39,7 +39,7 @@ export default class DocumentCard {
   }
   public addAction(document: Document): DocumentCard {
     const action = new SubmitAction();
-    action.data = { content: document.content };
+    action.data = { content: document.resourceURI };
     action.title = lang.getStringFor(lang.READ_MORE);
     this.internalCard.addAction(action);
     return this;

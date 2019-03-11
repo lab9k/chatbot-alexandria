@@ -10,6 +10,7 @@ import QuestionDialog from './dialogs/QuestionDialog';
 import FeedbackPrompt from './dialogs/FeedbackPrompt';
 import lang from './lang';
 import CorrectConceptPrompt from './dialogs/CorrectConceptPrompt';
+import { ChannelId } from './models/ChannelIds';
 
 const DIALOG_STATE_PROPERTY = 'dialog_state_prop';
 export class CityBot {
@@ -46,23 +47,49 @@ export class CityBot {
       [ActivityTypes.ConversationUpdate]: async () => {
         await this.welcomeUser(turnContext);
       },
+      default: () => {
+        console.log('Unknown activity type, not an error');
+      },
     };
-    await options[turnContext.activity.type]();
+    await (options[turnContext.activity.type] || options.default)();
     await this.saveChanges(turnContext);
   }
 
   private async handleDialog(turnContext: TurnContext) {
     const dialogContext = await this.dialogs.createContext(turnContext);
-
     // ? continue the multistep dialog that's already begun
     // ? won't do anything if there is no running dialog
-    if (dialogContext.context.activity.text) {
-      await dialogContext.continueDialog();
-    } else if (dialogContext.context.activity.value) {
-      await dialogContext.context.sendActivity(
-        dialogContext.context.activity.value.content,
-      );
-      await dialogContext.repromptDialog();
+    switch (turnContext.activity.channelId) {
+      case ChannelId.Facebook:
+        if (
+          checkNested(
+            dialogContext.context.activity.channelData,
+            'postback',
+            'payload',
+          )
+        ) {
+          // ? postback button clicked
+          const payload = JSON.parse(
+            dialogContext.context.activity.channelData.postback.payload,
+          );
+          await this.questionDialog.sendFile(dialogContext, payload);
+          await dialogContext.repromptDialog();
+        } else {
+          // ? message or quick reply
+          await dialogContext.continueDialog();
+        }
+        await dialogContext.continueDialog();
+        break;
+      default:
+        if (dialogContext.context.activity.value) {
+          console.log('detected button click');
+          const payload = dialogContext.context.activity.value;
+          await this.questionDialog.sendFile(dialogContext, payload);
+          await dialogContext.repromptDialog();
+        } else if (dialogContext.context.activity.text) {
+          await dialogContext.continueDialog();
+        }
+        break;
     }
 
     // ? if no outstanding dialog / no one responded
@@ -94,4 +121,15 @@ export class CityBot {
     await this.userState.saveChanges(tc);
     await this.conversationState.saveChanges(tc);
   }
+}
+
+function checkNested(obj: any, ...levels: string[]) {
+  for (let i = 0; i < levels.length; i += 1) {
+    if (!obj || !obj.hasOwnProperty(levels[i])) {
+      return false;
+    }
+    // tslint:disable-next-line:no-parameter-reassignment
+    obj = obj[levels[i]];
+  }
+  return true;
 }

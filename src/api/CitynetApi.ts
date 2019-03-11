@@ -1,7 +1,9 @@
 import axios from 'axios';
+import nodeFetch from 'node-fetch';
 import { stringify } from 'querystring';
 import * as moment from 'moment';
 import QueryResponse from '../models/QueryResponse';
+import * as download from 'download';
 
 export default class CitynetApi {
   token: { value: string; date: any };
@@ -63,5 +65,32 @@ export default class CitynetApi {
 
   private isTokenValid(): boolean {
     return moment(this.token.date).isAfter(moment().subtract(24, 'hours'));
+  }
+
+  public async downloadFile(resourceUri: string) {
+    // const ret = await axios.get(resourceUri, {
+    //   headers: { Authorization: `Bearer ${this.token.value}` },
+    // });
+    const headers = await nodeFetch(resourceUri, {
+      headers: { Authorization: `Bearer ${this.token.value}` },
+    }).then(res => res.headers);
+
+    const contentDisposition = headers.get('content-disposition');
+    const attachment = contentDisposition.split('; ');
+    const filename = attachment[1].split(' = ')[1];
+    const trimmedFileName = filename.substring(1, filename.length - 1);
+    const contentType = headers.get('content-type');
+
+    const options: download.DownloadOptions = {
+      filename: trimmedFileName,
+      headers: {
+        Authorization: `Bearer ${this.token.value}`,
+      },
+    };
+    return {
+      contentType: contentType.split(';')[0],
+      buffer: await download(resourceUri, './downloads', options),
+      filename: trimmedFileName,
+    };
   }
 }
