@@ -79,7 +79,7 @@ adapter.onTurnError = async (context, error) => {
   }
 
   // Send a message to the user.
-  await context.sendActivity(`Oops. Something went wrong!`);
+  await context.sendActivity(`Er ging iets mis! Probeer opnieuw aub`);
   // Clear out state
   await conversationState.delete(context);
 };
