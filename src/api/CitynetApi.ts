@@ -66,6 +66,7 @@ export default class CitynetApi {
   }
 
   private isTokenValid(): boolean {
+    if (!this.token) return false;
     return moment(this.token.date).isAfter(moment().subtract(24, 'hours'));
   }
 
