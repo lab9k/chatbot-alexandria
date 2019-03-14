@@ -40,6 +40,7 @@ export default class CitynetApi {
   }
 
   public async login(): Promise<{ value: string; date: string }> {
+    console.log('logging in');
     if (!this.isTokenValid()) {
       const { headers } = await axios.post(
         'https://api.cloud.nalantis.com/auth/v2/users/login',
@@ -53,6 +54,7 @@ export default class CitynetApi {
       this.token = token;
       return token;
     }
+    console.log('logged in');
     return this.token;
   }
 
