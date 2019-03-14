@@ -1,6 +1,6 @@
 import axios from 'axios';
 import nodeFetch from 'node-fetch';
-import { stringify } from 'querystring';
+import { URLSearchParams } from 'url';
 import * as moment from 'moment';
 import QueryResponse from '../models/QueryResponse';
 import * as download from 'download';
@@ -42,14 +42,16 @@ export default class CitynetApi {
   public async login(): Promise<{ value: string; date: string }> {
     console.log('logging in');
     if (!this.isTokenValid()) {
-      const { headers } = await axios.post(
+      const params = new URLSearchParams();
+      params.append('login', this.getCredentials().login);
+      params.append('password', this.getCredentials().password);
+      const { headers } = await nodeFetch(
         'https://api.cloud.nalantis.com/auth/v2/users/login',
-        stringify(this.getCredentials()),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+        { method: 'POST', body: params },
       );
       const token = {
-        value: headers.authorization.split('Bearer ')[1],
-        date: headers.date,
+        value: headers.get('Authorization').split('Bearer ')[1],
+        date: headers.get('date'),
       };
       this.token = token;
       return token;
