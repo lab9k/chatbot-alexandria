@@ -10,7 +10,6 @@ import {
   UserState,
   StatePropertyAccessor,
   ActionTypes,
-  Activity,
 } from 'botbuilder';
 import CitynetApi from '../api/CitynetApi';
 import { FeedbackTypes } from '../models/FeedbackTypes';
@@ -21,7 +20,7 @@ import lang from '../lang';
 import QueryResponse from '../models/QueryResponse';
 import CorrectConceptPrompt from './CorrectConceptPrompt';
 import { ConfirmTypes } from '../models/ConfirmTypes';
-import { readFileSync, createReadStream } from 'fs';
+import { readFileSync } from 'fs';
 import { ChannelId } from '../models/ChannelIds';
 import { FacebookCardBuilder, FacebookCard } from '../models/FacebookCard';
 import nodeFetch from 'node-fetch';

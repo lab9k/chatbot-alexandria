@@ -79,6 +79,8 @@ adapter.onTurnError = async (context, error) => {
     console.log(JSON.stringify(error['response'].body));
   }
   console.log(stringify(error));
+  console.log(error.message);
+  console.log(error.name);
 
   // Send a message to the user.
   await context.sendActivity(`Er ging iets mis! Probeer opnieuw aub`);
