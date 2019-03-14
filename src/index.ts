@@ -4,6 +4,7 @@
 import { config } from 'dotenv';
 import * as path from 'path';
 import * as restify from 'restify';
+import { stringify } from 'flatted';
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
@@ -77,6 +78,7 @@ adapter.onTurnError = async (context, error) => {
   if (error.message === 'Facebook API error') {
     console.log(JSON.stringify(error['response'].body));
   }
+  console.log(stringify(error));
 
   // Send a message to the user.
   await context.sendActivity(`Er ging iets mis! Probeer opnieuw aub`);
