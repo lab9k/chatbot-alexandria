@@ -43,7 +43,7 @@
     "tslint-config-airbnb": "^5.11.1"
   },
   "engines": {
-    "node": "10.14.1",
+    "node": "8.9.4",
     "npm": "6.4.1"
   }
 }
