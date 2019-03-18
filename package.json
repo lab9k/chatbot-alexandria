@@ -2,6 +2,7 @@
   "name": "citybot",
   "version": "0.0.0",
   "private": true,
+  "main": "./lib/index.js",
   "scripts": {
     "build": "node_modules/.bin/tsc --build",
     "lint": "node_modules/.bin/tslint -c tslint.json 'src/**/*.ts'",

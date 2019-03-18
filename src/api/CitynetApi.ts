@@ -47,7 +47,11 @@ export default class CitynetApi {
       params.append('password', this.getCredentials().password);
       const { headers } = await nodeFetch(
         'https://api.cloud.nalantis.com/auth/v2/users/login',
-        { method: 'POST', body: params },
+        {
+          method: 'POST',
+          body: params,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        },
       );
       const token = {
         value: headers.get('Authorization').split('Bearer ')[1],
