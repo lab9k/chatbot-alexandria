@@ -16,27 +16,49 @@ export default class CitynetApi {
   public async query(question: string): Promise<QueryResponse> {
     await this.login();
 
-    return axios
-      .request<QueryResponse>({
+    const data = await nodeFetch(
+      `${this.baseUrl}/v2/documents/query/semantic/generic`,
+      {
         method: 'POST',
-        url: `${this.baseUrl}/v2/documents/query/semantic/generic`,
-        data: {
-          query: question,
-          targetDocumentType: 'citynet',
-          resultDetailLevel: 9,
-          rows: 10,
-        },
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.token.value}`,
         },
-      })
-      .then(d => {
-        return d.data;
-      })
+        body: JSON.stringify({
+          query: question,
+          targetDocumentType: 'citynet',
+          resultDetailLevel: 9,
+          rows: 10,
+        }),
+      },
+    )
+      .then(res => res.json())
+      .then(json => <QueryResponse>json)
       .catch(err => {
         throw err;
       });
+    return data;
+    // return axios
+    //   .request<QueryResponse>({
+    //     method: 'POST',
+    //     url: `${this.baseUrl}/v2/documents/query/semantic/generic`,
+    //     data: {
+    //       query: question,
+    //       targetDocumentType: 'citynet',
+    //       resultDetailLevel: 9,
+    //       rows: 10,
+    //     },
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       Authorization: `Bearer ${this.token.value}`,
+    //     },
+    //   })
+    //   .then(d => {
+    //     return d.data;
+    //   })
+    //   .catch(err => {
+    //     throw err;
+    //   });
   }
 
   public async login(): Promise<{ value: string; date: string }> {
