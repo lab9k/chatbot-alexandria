@@ -169,7 +169,7 @@ server.listen(process.env.port || process.env.PORT || 3978, () => {
     `\nGet Bot Framework Emulator: https://aka.ms/botframework-emulator.`,
   );
   console.log(
-    `\nTo talk to your bot, open echobot-with-counter.bot file in the Emulator.`,
+    `\nTo talk to your bot, open citybot-gent.bot file in the Emulator.`,
   );
   console.log(`ENVIRONMENT:
   BOT_CONFIGURATION: ${BOT_CONFIGURATION}
