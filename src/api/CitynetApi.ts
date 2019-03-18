@@ -22,6 +22,7 @@ export default class CitynetApi {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Accept: 'application/json',
           Authorization: `Bearer ${this.token.value}`,
         },
         body: JSON.stringify({
@@ -32,7 +33,10 @@ export default class CitynetApi {
         }),
       },
     )
-      .then(res => res.json())
+      .then(res => {
+        console.log(res.headers);
+        return res.json();
+      })
       .then(json => <QueryResponse>json)
       .catch(err => {
         throw err;
