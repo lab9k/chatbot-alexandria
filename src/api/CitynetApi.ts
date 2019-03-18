@@ -64,7 +64,7 @@ export default class CitynetApi {
     const login = process.env.CITYNET_LOGIN;
     const password = process.env.CITYNET_PASSWORD;
     if (!login || !password) {
-      throw 'No Credentials provided';
+      throw 'No Citynet credentials provided in env';
     }
     return { login, password };
   }
@@ -75,9 +75,6 @@ export default class CitynetApi {
   }
 
   public async downloadFile(resourceUri: string) {
-    // const ret = await axios.get(resourceUri, {
-    //   headers: { Authorization: `Bearer ${this.token.value}` },
-    // });
     const headers = await nodeFetch(resourceUri, {
       headers: { Authorization: `Bearer ${this.token.value}` },
     }).then(res => res.headers);
@@ -88,7 +85,7 @@ export default class CitynetApi {
     const trimmedFileName = filename.substring(1, filename.length - 1);
     const contentType = headers.get('content-type');
 
-    const options: download.DownloadOptions = {
+    const dlOptions: download.DownloadOptions = {
       filename: trimmedFileName,
       headers: {
         Authorization: `Bearer ${this.token.value}`,
@@ -96,7 +93,7 @@ export default class CitynetApi {
     };
     return {
       contentType: contentType.split(';')[0],
-      buffer: await download(resourceUri, './downloads', options),
+      buffer: await download(resourceUri, './downloads', dlOptions),
       filename: trimmedFileName,
     };
   }
