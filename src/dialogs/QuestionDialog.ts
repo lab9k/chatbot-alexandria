@@ -11,13 +11,12 @@ import {
   StatePropertyAccessor,
   ActionTypes,
 } from 'botbuilder';
-import CitynetApi from '../api/CitynetApi';
+import AlexandriaApi from '../api/AlexandriaApi';
 import { FeedbackTypes } from '../models/FeedbackTypes';
 import { map, sortBy, take } from 'lodash';
 import FeedbackPrompt from './FeedbackPrompt';
 import lang from '../lang';
 
-import QueryResponse from '../models/QueryResponse';
 import CorrectConceptPrompt from './CorrectConceptPrompt';
 import { ConfirmTypes } from '../models/ConfirmTypes';
 import { readFileSync } from 'fs';
@@ -26,21 +25,22 @@ import { FacebookCardBuilder, FacebookCard } from '../models/FacebookCard';
 import nodeFetch from 'node-fetch';
 import * as FormData from 'form-data';
 import * as path from 'path';
+import AlexandriaQueryResponse from '../models/AlexandriaQueryResponse';
 
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
-  private readonly api: CitynetApi;
-  private readonly docsAccessor: StatePropertyAccessor<QueryResponse>;
+  private readonly api: AlexandriaApi;
+  private readonly docsAccessor: StatePropertyAccessor<AlexandriaQueryResponse>;
   constructor(userState: UserState) {
     super(QuestionDialog.ID);
-    this.docsAccessor = userState.createProperty<QueryResponse>(
+    this.docsAccessor = userState.createProperty<AlexandriaQueryResponse>(
       'resolved_data',
     );
     this.addStep(this.handleQuestion.bind(this));
     this.addStep(this.handleConcept.bind(this));
     this.addStep(this.handleFeedback.bind(this));
     this.addStep(this.handlePersonRequest.bind(this));
-    this.api = new CitynetApi();
+    this.api = new AlexandriaApi();
   }
 
   private async handleQuestion(sctx: WaterfallStepContext) {
@@ -48,12 +48,12 @@ export default class QuestionDialog extends WaterfallDialog {
     await sctx.context.sendActivity(lang.getStringFor(lang.WAIT_WHILE_FETCH));
 
     await sctx.context.sendActivity({ type: ActivityTypes.Typing });
-    const resolved: QueryResponse = await this.api.query(
+    const resolved: AlexandriaQueryResponse = await this.api.query(
       sctx.context.activity.text,
     );
 
     // ? break when no documents were found
-    if (resolved.documents.length <= 0) {
+    if (resolved.results.length <= 0) {
       await sctx.endDialog();
       return await this.waitFor(sctx, async () => {
         await sctx.context.sendActivity(lang.getStringFor(lang.NO_DOCS_FOUND));
@@ -65,46 +65,50 @@ export default class QuestionDialog extends WaterfallDialog {
     await this.docsAccessor.set(sctx.context, resolved);
 
     // ? ask if concept is correct
-    if (!resolved.conceptsOfQuery) {
+    if (true) {
       console.log('no concepts, skipping question');
       await sctx.next();
       return await this.handleConcept(sctx, true);
     }
 
-    await this.waitFor(sctx, async () => {
-      const formatConcepts = (conceptsArray: string[]) =>
-        conceptsArray
-          .map(concept =>
-            concept
-              .toLowerCase()
-              .split('_')
-              .join(' '),
-          )
-          .join(', ');
-      await sctx.prompt(CorrectConceptPrompt.ID, {
-        prompt: lang
-          .getStringFor(lang.ASK_CORRECT_CONCEPTS)
-          .replace('%1%', formatConcepts(resolved.conceptsOfQuery || [])),
-        retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-      });
-    });
+    // await this.waitFor(sctx, async () => {
+    //   const formatConcepts = (conceptsArray: string[]) =>
+    //     conceptsArray
+    //       .map(concept =>
+    //         concept
+    //           .toLowerCase()
+    //           .split('_')
+    //           .join(' '),
+    //       )
+    //       .join(', ');
+    //   await sctx.prompt(CorrectConceptPrompt.ID, {
+    //     prompt: lang
+    //       .getStringFor(lang.ASK_CORRECT_CONCEPTS)
+    //       .replace('%1%', formatConcepts(resolved.conceptsOfQuery || [])),
+    //     retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
+    //   });
+    // });
   }
 
   private async handleConcept(sctx: WaterfallStepContext, skipped?: boolean) {
     const answer = sctx.context.activity.text;
     if (answer === ConfirmTypes.POSITIVE || skipped) {
-      const resolved: QueryResponse = await this.docsAccessor.get(sctx.context);
+      const resolved: AlexandriaQueryResponse = await this.docsAccessor.get(
+        sctx.context,
+      );
       if (sctx.context.activity.channelId === ChannelId.Facebook) {
         const fbCardBuilder = new FacebookCardBuilder();
-        resolved.documents.forEach((doc, i) =>
+        resolved.results.forEach((doc, i) =>
           fbCardBuilder.addCard(
             new FacebookCard(
-              `Document ${i}`,
-              `${take(doc.summary.split(' '), 50).join(' ')}...`,
+              `${doc.category.documents[0].meta.title}`,
+              `${doc.category.documents[0].meta.description}`,
               {
                 type: 'postback',
-                title: 'Download pdf',
-                payload: JSON.stringify({ content: doc.resourceURI }),
+                title: 'Download pdf //TODO',
+                payload: JSON.stringify({
+                  content: doc.category.documents[0].filename,
+                }),
               },
             ),
           ),
@@ -112,17 +116,17 @@ export default class QuestionDialog extends WaterfallDialog {
         await sctx.context.sendActivity(fbCardBuilder.getData());
       } else {
         const cards = map(
-          sortBy(resolved.documents, 'scoreInPercent').reverse(),
+          sortBy(resolved.results, 'scoreInPercent').reverse(),
           document => {
             return CardFactory.heroCard(
-              `${take(document.content.split(' '), 5).join(' ')}...`,
-              `${take(document.content.split(' '), 20).join(' ')}...`,
+              `${document.category.documents[0].meta.title}`,
+              `${document.category.documents[0].meta.description}`,
               [],
               [
                 {
-                  value: { content: document.resourceURI },
+                  value: { content: document.category.description },
                   type: ActionTypes.PostBack,
-                  title: 'download document',
+                  title: 'download document //TODO',
                 },
               ],
             );

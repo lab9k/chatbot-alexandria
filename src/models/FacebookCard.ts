@@ -1,6 +1,3 @@
-import { Document } from './QueryResponse';
-import { take } from 'lodash';
-
 interface FacebookData {
   channelData: {
     attachment: {
