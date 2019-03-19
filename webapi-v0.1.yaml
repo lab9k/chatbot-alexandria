@@ -1,0 +1,571 @@
+openapi: 3.0.2
+info:
+  description: API definition for Alexandria.Works - the intelligent search system.
+  version: '0.1'
+  title: AW-WebAPI
+  contact:
+    email: tom.pauwaert@alexandria.works
+servers:
+  - url: 'https://{server}/v0.1'
+    description: The production server API
+    variables:
+      server:
+        default: api.alexandria.works
+paths:
+  /documents:
+    post:
+      summary: >-
+        Register a file with metadata. If successful this method provides a URI
+        to which you may upload the actual file.
+      operationId: services.webapi.web.documents.register
+      description: |
+        ## General Flow
+
+        Register a file's metadata to create a metadata record for the file.
+        Upon successful registration the response will contain a URI to where
+        the file can be uploaded and whether the file data itself is already
+        available on the server or not (e.g. because of duplication).
+
+        The following filetypes are accepted: .pdf, .ppt, .pptx, .doc, .docx, .txt.
+        Registering a file with an unsupported filetype will result in a 400 (Bad Request) response.
+
+        The following data is expected -- items in bold are required.
+
+
+        * metadata: free metadata. Other fields than specified below.
+
+        * **filename**
+
+        * **path:** full path from the data source root to the file.
+
+        * date_created
+
+        * **source**: Source of the document, e.g. SharePoint X, External Source Y, Website Z, ...
+
+        * **owner**: The owner of the file. This can be a UserID or it can be
+        the same as the source if there is no explicit owner.
+
+        * date_lastmodified
+
+        * md5hash: the MD5 hash (hexdigest) of the actual file-content associated with
+        these metadata.
+
+
+        The MD5 Hash is an optional argument. If it is sent then it can be used
+        by the server to check in advance whether a file already exists on the
+        server or not. Otherwise the server checks for the combination of
+        filename, owner, source and path variables to see whether the file
+        might already exist. In the case that a file exists with the same
+        quadrituple of information we have a possible duplicate file.
+
+        Note that the server allows duplicates in the following scenarios:
+
+        * The system allows _same_content_files_ with different filenames and/or metadata. In this case the md5sum of the file would is identical. However the file might be referenced in different places in different ways. The system keeps a metadata record for each such occurrence.
+
+        * The system allows _same_metadata_files_ - with different contents. In this case the md5sum of the file is different. This could happen when indexing different versions of files. Each version has the same metadata and name, but the contents themselves differ. The system creates a new metadata record for each such occurrence and stores the each version of the file.
+
+        It is only when we encounter _same_content_ and _same_metadata_ files that the system rejects it as a duplicate. Depending on the supplied information there are 4 different scenarios.
+
+        ### Scenario 1: MD5 is specified - It's a duplicate
+
+        If the metadata is an exact duplicate of what we already have for the
+        MD5 the response will be a 409 (Conflict) with a Content-Location
+        specifying the original resource. The user receives a URI where the file can be found and/or stored, and whether the file is already available or not (date-added). If the file is not present yet, the user may upload the
+        data to the specfied file URI.
+
+        If the metadata is only a partial duplicate the server will
+        create a new entry of metadata for the second instance
+        of the document record. The response is a 201 (Created) with a
+        Content-Location to the new record. However the file registration URI
+        might note that the file is already present on the server and needs not
+        be uploaded (date-added is set).
+
+        ### Scenario 2: MD5 is specified - No duplicate based on the MD5
+
+        The server accepts the metadata and creates a record - 201 (Created)
+        with the Content-Location set to the record. The user will be invited to
+        upload the data to the specified file URI.
+
+        ### Scenario 3: MD5 not specified - Possible collision based on metadata
+
+        When the MD5 has not been specified the server instead checks to see if
+        a quadrituple of (filename, owner, path, source) exists in the set of
+        registered records. In case such a record exists the server rejects this
+        registration with a 409 (Conflict) - Potential Duplicate.
+
+        The client can then attempt to register again while providing the MD5
+        checksum for the file. The MD5 will then be used to determine wether
+        this is an actual duplicate or a false positive.
+
+        ### Scenario 4: MD5 not specified - No collision detected based on metadata
+
+        The server accepts the record with a 201 (Created) and returns the
+        Content-Location of the new record. The user will be invited to upload
+        the data to the specified file URI.
+      requestBody:
+        description: >-
+          Describes the format of the representation for creating a new document
+          metadata record.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentMetadata_RequestData'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentMetadata_ResponseData'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/GenericErrorResponse'
+  /documents/{docId}:
+    get:
+      summary: Get the metadata of document with specified docid.
+      operationId: services.webapi.web.documents.retrieve
+      parameters:
+        - in: path
+          name: docId
+          schema:
+            $ref: '#/components/schemas/uuid'
+          required: true
+          description: ID of the requested document
+      description: |
+        Fetch the metadata record for an existing document. The metadata also includes a file link where the document content is located - that can be used to download the original. 
+
+        If a document with specified `docId` does not exist, a `404 (Not Found)` is returned.
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentMetadata_ResponseData'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/GenericErrorResponse'
+        default:
+          $ref: '#/components/responses/GenericErrorResponse'
+
+  /files/{fileId}:
+    post:
+      summary: Accepts an uploaded file
+      operationId: services.webapi.web.files.store
+      parameters:
+        - $ref: '#/components/parameters/fileId'
+      description: |
+        A user can upload a file to the specified endpoint. The endpoint expects single file using application/octet-stream Content-Type. The endpoint currently accepts files up to a maximum of 150MB in size.
+        If the URI already has a file added to it, the new upload will be rejected with a 400 (Bad Request). The error will specify that the file had already been uploaded.
+        >
+        If upon completion of the upload the webapi detects the file to be a duplicate of an already existing file based on the md5sum, a `200 (OK)` response is returned and the file is accepted while the conflict is resolved internally. The webapi will then adjust the document metadata records of the duplicates to specify that they are in fact describing the same file.
+        >
+        If the upload was successful, with or without duplication, as long as no file was already added to this URI and the file size was within the allowed constraints the response will be `200 (OK)`.
+
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+
+      responses:
+        '200':
+          description: OK
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/GenericErrorResponse'
+
+    get:
+      summary: Download an indexed file.
+      operationId: services.webapi.web.files.retrieve
+      parameters:
+        - $ref: '#/components/parameters/fileId'
+      description: |
+        Download the file with specified ID, if it exists. If it exists it is returned with a `200 (OK)` status code, otherwise you will receive a `404 (Not Found)`. 
+        >
+        Note that the filename for the returned document is possibly only one of a number of possible filenames. Depending on how the file is requested (which owner, path, source,...) a different filename may be returned in a best-effort approach.
+      responses:
+        '200':
+          description: OK
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: The content-disposition will specify the original-filename with extension.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /chat:
+    post:
+      summary: A simple interaction endpoint for querying in chat-based scenario's
+      operationId: services.webapi.web.chat.start_session
+      description: |
+        The chat endpoint does not require a lot of parameters for interaction with the data. It does not allow for much customization and is meant for a straightforward querying-interaction. The user supplies a query and receives a simple response. A response will contain one or more categories the webapi has determined to be relevant together with the best scoring documents for those categories.
+        >
+        Note that posting to the chat endpoint will create a new chat-session. A `201 (Created)` response will be returned with the `Content-Location` header set to the newly created chat session. Subsequent requests within the same session should be sent to the specified session. 
+
+      requestBody:
+        description: Contains the chat-query
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat_RequestData'
+
+      responses:
+        '201':
+          description: 'Created'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat_ResponseData'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/GenericErrorResponse'
+
+  /chat/{sessionId}:
+    post:
+      summary: Further interaction with an existing chat-session.
+      operationId: services.webapi.web.chat.continue_session
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: string
+          description: A valid chat sessionId
+      description:  |
+        The chat endpoint does not require a lot of parameters for interaction with the data. It does not allow for much customization and is meant for a straightforward querying-interaction. The user supplies a query and receives a simple response. A response will contain one or more categories the webapi has determined to be relevant together with the best scoring documents for those categories.
+        > 
+        Note that posting to this endpoint requires the chat-session to already exist. If the request was acceptable a `200 (OK)` is returned. If the session does not yet exist a `404 (Not Found)` is returned. Further requests within the same session may also be sent to this endpoint.
+
+      requestBody:
+        description: Contains the chat-query
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Chat_RequestData'
+
+      responses:
+        '200':
+          description: 'OK'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chat_ResponseData'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        default:
+          $ref: '#/components/responses/GenericErrorResponse'
+
+
+
+components:
+  schemas:
+    uuid:
+      type: string
+      pattern: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+      description: UUID string
+    DocumentMetadata_RequestData:
+      type: object
+      additionalProperties: false
+      properties:
+        filename:
+          type: string
+          description: 'filename without path, but including extension.'
+        path:
+          type: string
+          description: 'Full path to the directory containing the file - The filename is excluded from the path.'
+        source:
+          type: string
+        owner:
+          type: string
+        date_created:
+          type: string
+          format: date-time
+        date_lastmodified:
+          type: string
+          format: date-time
+        md5hash:
+          type: string
+          pattern: '[0-9a-f]{32}'
+          description: md5-hash value as a string of 32 hexadecimal digits (hexdigest).
+        meta:
+          type: object
+          additionalProperties: true
+          description: >
+            The meta field can contain any additional metadata the system has
+            about the file. This could be tags, references, links to other kind
+            of data, anything. It is structured as a JSON object.
+      required:
+        - filename
+        - path
+        - source
+        - owner
+      example:
+        filename: anual_report_2019.pdf
+        path: /path/to/parent_folder
+        source: internal-sharepoint-A
+        owner: user-id-of-john-doe
+        date_created: '2019-02-17T12:35:17.789Z'
+        date_lastmodified: '2019-02-17T12:35:17.789Z'
+        md5hash: f3f6961200eba98906cdb3b24358e329
+        meta:
+          tags:
+            - report
+            - marketing
+            - ...
+          meeting_ref: jan-2019-0001
+    DocumentMetadata_ResponseData:
+      allOf:
+        - $ref: '#/components/schemas/DocumentMetadata_RequestData'
+        - type: object
+          properties:
+            uuid:
+              $ref: '#/components/schemas/uuid'
+            file:
+              type: object
+              properties:
+                date_added:
+                  type: string
+                  format: date-time
+                  description: >-
+                    This value _will be set_ if the server already has the
+                    actual _file content available_ on the server or _will be
+                    missing_ if the _file-content is not yet available_ for this
+                    entry. Look at the description for the POST method on the
+                    /documents resource to learn what effect the existence of
+                    duplicate files can have on this value.
+                uri:
+                  type: string
+                  format: uri
+                  description: >-
+                    A URI where the actual file can be found or saved to for which this is
+                    the metadata. The URI can be a relative URI or an absolute URI. If the URI
+                    is relative it must be prepended by both the host AND the api version qualifier.
+              required:
+                - uri
+          required:
+            - uuid
+            - file
+      example:
+        filename: anual_report_2019.pdf
+        path: /path/to/parent_folder
+        source: internal-sharepoint-A
+        owner: user-id-of-john-doe
+        date_created: '2019-02-17T12:35:17.789Z'
+        date_lastmodified: '2019-02-17T12:35:17.789Z'
+        md5hash: f3f6961200eba98906cdb3b24358e329
+        meta:
+          tags:
+            - report
+            - marketing
+            - ...
+          meeting_ref: jan-2019-0001
+        uuid: 258ac8a8-32b2-11e9-b210-d663bd873d93
+        file:
+          uri: 'https://uri-where.file/can-be/stored'
+          date_added: '2019-02-18T00:12:51.021Z'
+    Chat_RequestData:
+      type: object
+      required:
+        - query
+        - type
+      properties:
+        type:
+          type: string
+          example: "query"
+        query:
+          type: string
+          example: "This is a question for the webapi."
+    Chat_ResponseData:
+      type: object
+      required:
+        - type
+        - query
+        - results
+        - sessionid
+      properties:
+        type:
+          type: string
+          example: "query"
+        query:
+          type: string
+          example: "This is a question for the webapi."
+        sessionid:
+          type: string
+          example: "MTAwMS4xMjM4"
+        results:
+          type: array
+          items:
+            type: object
+            required:
+              - category
+            properties:
+              category:
+                type: object
+                required:
+                  - description
+                  - documents
+                properties:
+                  description:
+                    type: string
+                    example: "Interesting Topic 1"
+                  documents:
+                    type: array
+                    minItems: 1
+                    items:
+                      type: object
+                      required:
+                        - confidence
+                        - filename
+                        - uuid
+                        - docpart-id
+                        - content
+                      properties:
+                        confidence:
+                          type: number
+                          format: float
+                          example: 0.8567
+                        filename:
+                          type: string
+                          example: "filename.pdf"
+                        uuid:
+                          $ref: '#/components/schemas/uuid'
+                        docpart_id:
+                          type: integer
+                          example: 312
+                        meta:
+                          type: object
+                          example:
+                            title: 'A curious title for a curious document.'
+                            description: 'This document talks about the curiosities in life, such as the ice-cream eating frog.'
+                        content:
+                          type: string
+                          example: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec placerat sem non fringilla vestibulum. Pellentesque lorem augue, molestie nec dolor scelerisque, iaculis congue massa. Praesent eu dignissim libero. Sed mattis dui vitae lacus consequat, in dignissim leo posuere. In hac habitasse platea dictumst. Etiam consequat volutpat diam vitae tempor. Suspendisse pulvinar ac risus eu tincidunt. ..."
+
+
+
+
+    GenericErrorObject:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        target:
+          type: string
+        details:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/GenericErrorObject'
+        innererror:
+          $ref: '#/components/schemas/GenericErrorObject'
+      example:
+        code: bad_request
+        message: Identifier invalid
+        target: id
+        innererror:
+          code: unique_constraint_violation
+          message: Identifier must be a unique value in the collection
+          minValue: 0
+          maxValue: 2147483647
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      name: AW-API-KEY
+      in: header
+      x-apikeyInfoFunc: services.webapi.web.auth.auth_apikey
+  responses:
+    GenericErrorResponse:
+      description: Error
+      content:
+        application/json+problem:
+          schema:
+            type: object
+            required:
+              - error
+              - status
+              - title
+              - detail
+            properties:
+              error:
+                $ref: '#/components/schemas/GenericErrorObject'
+              status:
+                type: number
+                format: integer
+                example: 400
+              title:
+                type: string
+                example: 'bad_request'
+              detail:
+                type: string
+                example: 'Identifier invalid'
+    UnauthorizedError:
+      description: Missing or invalid credentials
+      headers:
+        WWW_Authenticate:
+          schema:
+            type: string
+      content:
+        application/json+problem:
+          schema:
+            type: object
+            required:
+              - error
+              - status
+              - title
+              - detail
+            properties:
+              error:
+                $ref: '#/components/schemas/GenericErrorObject'
+              status:
+                type: number
+                format: integer
+              title:
+                type: string
+              detail:
+                type: string
+            example:
+              status: 401
+              title: unauthorized
+              detail: 'Authorization token invalid'
+              error:
+                code: unauthorized
+                message: 'Authorization token invalid'
+                target: AW-API-KEY
+                innererror:
+                  code: apikey_expired
+                  message: 'apikey has expired'
+
+  parameters:
+    fileId:
+      in: path
+      name: fileId
+      schema:
+        type: integer
+      required: true
+      description: File ID of the uploaded file
+
+
+security:
+  - ApiKeyAuth: []
+externalDocs:
+  description: Find out more about Alexandria.Works
+  url: 'https://alexandria.works'
