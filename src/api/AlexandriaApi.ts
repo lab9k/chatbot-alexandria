@@ -23,10 +23,7 @@ export default class AlexandriaApi {
       }),
     })
       .then(res => res.json())
-      .then(json => {
-        console.log(JSON.stringify(json));
-        return <AlexandriaQueryResponse>json;
-      })
+      .then(json => <AlexandriaQueryResponse>json)
       .catch(err => {
         throw err;
       });

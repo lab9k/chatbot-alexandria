@@ -1,3 +1,5 @@
+import { map, sortBy, flatMap } from 'lodash';
+import * as TurndownService from 'turndown';
 export interface AlexandriaDocument {
   confidence: number;
   filename: string;
@@ -12,6 +14,37 @@ export interface AlexandriaCategory {
 export default interface AlexandriaQueryResponse {
   type: string;
   query: string;
-  sessionId: string;
+  sessionid: string;
   results: AlexandriaCategory[];
+}
+
+export function getDocuments(
+  response: AlexandriaQueryResponse,
+): {
+  title: string;
+  description: string;
+  confidence: number;
+  category: string;
+  uuid: string;
+  sessionid: string;
+  query: string;
+}[] {
+  const turndown = new TurndownService();
+  return sortBy(
+    flatMap(response.results, (category: AlexandriaCategory) => {
+      return map(
+        category.category.documents,
+        (document: AlexandriaDocument) => ({
+          title: document.meta.title,
+          description: turndown.turndown(document.meta.description),
+          confidence: document.confidence,
+          category: category.category.description,
+          uuid: document.uuid,
+          sessionid: response.sessionid,
+          query: response.query,
+        }),
+      );
+    }),
+    'confidence',
+  );
 }

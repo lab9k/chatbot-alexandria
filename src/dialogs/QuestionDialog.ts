@@ -9,28 +9,28 @@ import {
   CardFactory,
   UserState,
   StatePropertyAccessor,
-  ActionTypes,
 } from 'botbuilder';
 import AlexandriaApi from '../api/AlexandriaApi';
 import { FeedbackTypes } from '../models/FeedbackTypes';
-import { map, sortBy, take } from 'lodash';
+import { map } from 'lodash';
 import FeedbackPrompt from './FeedbackPrompt';
 import lang from '../lang';
 
-import CorrectConceptPrompt from './CorrectConceptPrompt';
 import { ConfirmTypes } from '../models/ConfirmTypes';
 import { readFileSync } from 'fs';
 import { ChannelId } from '../models/ChannelIds';
 import { FacebookCardBuilder, FacebookCard } from '../models/FacebookCard';
 import nodeFetch from 'node-fetch';
 import * as FormData from 'form-data';
-import * as path from 'path';
-import AlexandriaQueryResponse from '../models/AlexandriaQueryResponse';
+import AlexandriaQueryResponse, {
+  getDocuments,
+} from '../models/AlexandriaQueryResponse';
 
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
   private readonly api: AlexandriaApi;
   private readonly docsAccessor: StatePropertyAccessor<AlexandriaQueryResponse>;
+
   constructor(userState: UserState) {
     super(QuestionDialog.ID);
     this.docsAccessor = userState.createProperty<AlexandriaQueryResponse>(
@@ -38,8 +38,8 @@ export default class QuestionDialog extends WaterfallDialog {
     );
     this.addStep(this.handleQuestion.bind(this));
     this.addStep(this.handleConcept.bind(this));
-    this.addStep(this.handleFeedback.bind(this));
-    this.addStep(this.handlePersonRequest.bind(this));
+    // this.addStep(this.handleFeedback.bind(this));
+    // this.addStep(this.handlePersonRequest.bind(this));
     this.api = new AlexandriaApi();
   }
 
@@ -96,18 +96,48 @@ export default class QuestionDialog extends WaterfallDialog {
       const resolved: AlexandriaQueryResponse = await this.docsAccessor.get(
         sctx.context,
       );
+      const docs = getDocuments(resolved);
       if (sctx.context.activity.channelId === ChannelId.Facebook) {
         const fbCardBuilder = new FacebookCardBuilder();
-        resolved.results.forEach((doc, i) =>
+        docs.forEach((doc, i) =>
           fbCardBuilder.addCard(
             new FacebookCard(
-              `${doc.category.documents[0].meta.title}`,
-              `${doc.category.documents[0].meta.description}`,
+              `${doc.title}`,
+              `${doc.description}`,
               {
                 type: 'postback',
                 title: 'Download pdf //TODO',
                 payload: JSON.stringify({
-                  content: doc.category.documents[0].filename,
+                  type: 'download',
+                  value: {
+                    uuid: doc.uuid,
+                  },
+                }),
+              },
+              {
+                type: 'postback',
+                title: 'Nuttig',
+                payload: JSON.stringify({
+                  type: 'feedback',
+                  value: {
+                    uuid: doc.uuid,
+                    state: true,
+                    sessionid: doc.sessionid,
+                    query: doc.query,
+                  },
+                }),
+              },
+              {
+                type: 'postback',
+                title: 'Niet Nuttig',
+                payload: JSON.stringify({
+                  type: 'feedback',
+                  value: {
+                    uuid: doc.uuid,
+                    state: false,
+                    sessionid: doc.sessionid,
+                    query: doc.query,
+                  },
                 }),
               },
             ),
@@ -115,73 +145,57 @@ export default class QuestionDialog extends WaterfallDialog {
         );
         await sctx.context.sendActivity(fbCardBuilder.getData());
       } else {
-        const cards = map(
-          sortBy(resolved.results, 'scoreInPercent').reverse(),
-          document => {
-            return CardFactory.heroCard(
-              `${document.category.documents[0].meta.title}`,
-              `${document.category.documents[0].meta.description}`,
-              [],
-              [
-                {
-                  value: { content: document.category.description },
-                  type: ActionTypes.PostBack,
-                  title: 'download document //TODO',
-                },
-              ],
-            );
-          },
-        );
+        const cards = map(docs, document => {
+          return CardFactory.heroCard(
+            `${document.title}`,
+            `${document.description}`,
+            [],
+            [
+              {
+                type: 'messageBack',
+                title: 'download document //TODO',
+                value: JSON.stringify({
+                  type: 'download',
+                  value: {
+                    uuid: document.uuid,
+                  },
+                }),
+              },
+              {
+                type: 'messageBack',
+                title: 'Nuttig',
+                value: JSON.stringify({
+                  type: 'feedback',
+                  value: {
+                    uuid: document.uuid,
+                    state: true,
+                    sessionid: document.sessionid,
+                    query: document.query,
+                  },
+                }),
+              },
+              {
+                type: 'messageBack',
+                title: 'Niet Nuttig',
+                value: JSON.stringify({
+                  type: 'feedback',
+                  value: {
+                    uuid: document.uuid,
+                    state: false,
+                    sessionid: document.sessionid,
+                    query: document.query,
+                  },
+                }),
+              },
+            ],
+          );
+        });
         await sctx.context.sendActivity(MessageFactory.carousel(cards));
       }
-      await this.waitFor(sctx, async () => {
-        await sctx.prompt(FeedbackPrompt.ID, {
-          prompt: lang.getStringFor(lang.USEFULLNESS_QUERY),
-          retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-        });
-      });
     } else if (answer === ConfirmTypes.NEGATIVE) {
       await sctx.context.sendActivity(lang.getStringFor(lang.REPHRASE));
       await sctx.endDialog();
     }
-  }
-
-  private async handleFeedback(sctx: WaterfallStepContext) {
-    const answer = sctx.context.activity.text;
-    if (answer === FeedbackTypes.GOOD) {
-      await sctx.context.sendActivity(lang.getStringFor(lang.THANK_FEEDBACK));
-      await this.waitFor(sctx, async () => {
-        await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
-      });
-      await sctx.endDialog();
-    }
-    if (answer === FeedbackTypes.BAD) {
-      await sctx.prompt('confirm_prompt', {
-        prompt: lang.getStringFor(lang.REAL_PERSON),
-        retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-        choices: [lang.POSITIVE, lang.NEGATIVE],
-      });
-    }
-  }
-
-  public async askFeedback(sctx: DialogContext): Promise<any> {
-    await this.waitFor(sctx, async () => {
-      await sctx.prompt(FeedbackPrompt.ID, {
-        prompt: lang.getStringFor(lang.USEFULLNESS_QUERY),
-        retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-      });
-    });
-  }
-
-  private async handlePersonRequest(sctx: WaterfallStepContext) {
-    if (
-      sctx.context.activity.text.toUpperCase() === lang.POSITIVE.toUpperCase()
-    ) {
-      await sctx.context.sendActivity(lang.getStringFor(lang.EMAIL_SENT));
-    } else {
-      await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
-    }
-    await sctx.endDialog();
   }
 
   public async sendFile(
@@ -198,14 +212,6 @@ export default class QuestionDialog extends WaterfallDialog {
 
     // TODO: split fb and other channels
     if (dialogContext.context.activity.channelId === ChannelId.Facebook) {
-      const filePath = path.resolve(
-        __dirname,
-        '..',
-        '..',
-        'downloads',
-        ret.filename,
-      );
-      console.log(filePath);
       const fd = new FormData();
       fd.append('file', ret.buffer, {
         filename: ret.filename,
@@ -217,7 +223,6 @@ export default class QuestionDialog extends WaterfallDialog {
       })
         .then(async res => res.json())
         .then(async res => {
-          console.log(res);
           await dialogContext.context.sendActivity(
             'Ik stuur je de downloadlink onmiddelijk door.',
           );
@@ -249,4 +254,41 @@ export default class QuestionDialog extends WaterfallDialog {
       },         Math.random() * 1000 + 1000);
     });
   }
+  // private async handleFeedback(sctx: WaterfallStepContext) {
+  //   const answer = sctx.context.activity.text;
+  //   if (answer === FeedbackTypes.GOOD) {
+  //     await sctx.context.sendActivity(lang.getStringFor(lang.THANK_FEEDBACK));
+  //     await this.waitFor(sctx, async () => {
+  //       await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
+  //     });
+  //     await sctx.endDialog();
+  //   }
+  //   if (answer === FeedbackTypes.BAD) {
+  //     await sctx.prompt('confirm_prompt', {
+  //       prompt: lang.getStringFor(lang.REAL_PERSON),
+  //       retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
+  //       choices: [lang.POSITIVE, lang.NEGATIVE],
+  //     });
+  //   }
+  // }
+
+  // public async askFeedback(sctx: DialogContext): Promise<any> {
+  //   await this.waitFor(sctx, async () => {
+  //     await sctx.prompt(FeedbackPrompt.ID, {
+  //       prompt: lang.getStringFor(lang.USEFULLNESS_QUERY),
+  //       retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
+  //     });
+  //   });
+  // }
+
+  // private async handlePersonRequest(sctx: WaterfallStepContext) {
+  //   if (
+  //     sctx.context.activity.text.toUpperCase() === lang.POSITIVE.toUpperCase()
+  //   ) {
+  //     await sctx.context.sendActivity(lang.getStringFor(lang.EMAIL_SENT));
+  //   } else {
+  //     await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
+  //   }
+  //   await sctx.endDialog();
+  // }
 }

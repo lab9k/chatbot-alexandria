@@ -11,6 +11,7 @@ import FeedbackPrompt from './dialogs/FeedbackPrompt';
 import lang from './lang';
 import CorrectConceptPrompt from './dialogs/CorrectConceptPrompt';
 import { ChannelId } from './models/ChannelIds';
+import AirtableApi from './api/AirtableApi';
 
 const DIALOG_STATE_PROPERTY = 'dialog_state_prop';
 export class CityBot {
@@ -81,10 +82,24 @@ export class CityBot {
         await dialogContext.continueDialog();
         break;
       default:
-        if (dialogContext.context.activity.value) {
-          console.log('detected button click');
-          const payload = dialogContext.context.activity.value;
-          await this.questionDialog.sendFile(dialogContext, payload);
+        const value = JSON.parse(dialogContext.context.activity.value || '{}');
+        if (value.type === 'feedback') {
+          await dialogContext.context.sendActivity(
+            `Merci voor de feedback: ${value.value.state} op document: ${
+              value.value.uuid
+            } en sessionId: ${value.value.sessionid}`,
+          );
+          const airtableApi = new AirtableApi();
+          airtableApi.addLine({
+            document: value.value.uuid,
+            feedback: value.value.state,
+            question: value.value.query,
+            sessionid: value.value.sessionid,
+          });
+        } else if (value.type === 'download') {
+          console.log('detected download button click');
+          throw 'Not implemented';
+          await this.questionDialog.sendFile(dialogContext, value.value.uuid);
           await dialogContext.repromptDialog();
         } else if (dialogContext.context.activity.text) {
           await dialogContext.continueDialog();
