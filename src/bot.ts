@@ -73,6 +73,7 @@ export class CityBot {
           const payload = JSON.parse(
             dialogContext.context.activity.channelData.postback.payload,
           );
+          console.log('\n', payload, '\n');
           await this.questionDialog.sendFile(dialogContext, payload);
           await dialogContext.repromptDialog();
         } else {
