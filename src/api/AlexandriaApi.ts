@@ -40,7 +40,11 @@ export default class AlexandriaApi {
 
   public async downloadFile(resourceUri: string) {
     const headers = await nodeFetch(resourceUri, {
-      headers: { Authorization: `Bearer ${this.token.value}` },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'AW-API-KEY': `${this.getCredentials()}`,
+      },
     }).then(res => res.headers);
 
     const contentDisposition = headers.get('content-disposition');
@@ -52,7 +56,9 @@ export default class AlexandriaApi {
     const dlOptions: download.DownloadOptions = {
       filename: trimmedFileName,
       headers: {
-        Authorization: `Bearer ${this.token.value}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'AW-API-KEY': `${this.getCredentials()}`,
       },
     };
     return {
