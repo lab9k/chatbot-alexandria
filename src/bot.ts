@@ -98,8 +98,6 @@ export class CityBot {
           } else if (dialogContext.context.activity.text) {
             await dialogContext.continueDialog();
           }
-          await this.questionDialog.sendFile(dialogContext, payload);
-          await dialogContext.repromptDialog();
         } else {
           // ? message or quick reply
           await dialogContext.continueDialog();
