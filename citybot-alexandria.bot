@@ -1,16 +1,16 @@
 {
-  "name": "citybot-alexandria",
-  "description": "",
-  "services": [
-    {
-      "type": "endpoint",
-      "appId": "",
-      "appPassword": "",
-      "endpoint": "http://localhost:3978/api/messages",
-      "name": "development",
-      "id": "3"
-    }
-  ],
-  "padlock": "",
-  "version": "2.0"
+    "name": "citybot-alexandria",
+    "description": "",
+    "services": [
+        {
+            "type": "endpoint",
+            "appId": "",
+            "appPassword": "",
+            "endpoint": "http://localhost:3978/api/messages",
+            "name": "development",
+            "id": "3"
+        }
+    ],
+    "padlock": "UEjtxz+8AGBhrm6LwuXHBg==!k111mmWYpqrEphLirUCdDmumOPmMir0kk8jCTwunVsT2AlBecMhDoF0osl2CBNYr",
+    "version": "2.0"
 }
