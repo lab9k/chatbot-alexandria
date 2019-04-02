@@ -74,6 +74,30 @@ export class CityBot {
             dialogContext.context.activity.channelData.postback.payload,
           );
           console.log('\n', payload, '\n');
+          if (payload.type === 'feedback') {
+            await dialogContext.context.sendActivity(
+              `Merci voor de feedback: ${payload.value.state} op document: ${
+                payload.value.uuid
+              } en sessionId: ${payload.value.sessionid}`,
+            );
+            const airtableAPI = new AirtableApi();
+            airtableAPI.addLine({
+              document: payload.value.uuid,
+              feedback: payload.value.state,
+              question: payload.value.query,
+              sessionid: payload.value.sessionid,
+            });
+          } else if (payload.type === 'download') {
+            console.log('detected download button click');
+            throw 'Not implemented';
+            await this.questionDialog.sendFile(
+              dialogContext,
+              payload.value.uuid,
+            );
+            await dialogContext.repromptDialog();
+          } else if (dialogContext.context.activity.text) {
+            await dialogContext.continueDialog();
+          }
           await this.questionDialog.sendFile(dialogContext, payload);
           await dialogContext.repromptDialog();
         } else {
@@ -82,6 +106,29 @@ export class CityBot {
         }
         await dialogContext.continueDialog();
         break;
+      // const value = JSON.parse(dialogContext.context.activity.value || '{}');
+      // if (value.type === 'feedback') {
+      //   await dialogContext.context.sendActivity(
+      //     `Merci voor de feedback: ${value.value.state} op document: ${
+      //       value.value.uuid
+      //     } en sessionId: ${value.value.sessionid}`,
+      //   );
+      //   const airtableApi = new AirtableApi();
+      //   airtableApi.addLine({
+      //     document: value.value.uuid,
+      //     feedback: value.value.state,
+      //     question: value.value.query,
+      //     sessionid: value.value.sessionid,
+      //   });
+      // } else if (value.type === 'download') {
+      //   console.log('detected download button click');
+      //   throw 'Not implemented';
+      //   await this.questionDialog.sendFile(dialogContext, value.value.uuid);
+      //   await dialogContext.repromptDialog();
+      // } else if (dialogContext.context.activity.text) {
+      //   await dialogContext.continueDialog();
+      // }
+      // break;
       default:
         const value = JSON.parse(dialogContext.context.activity.value || '{}');
         if (value.type === 'feedback') {
