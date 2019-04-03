@@ -1,5 +1,5 @@
 import { map, sortBy, flatMap } from 'lodash';
-import * as TurndownService from 'turndown';
+import turndown from 'turndown';
 export interface AlexandriaDocument {
   confidence: number;
   filename: string;
@@ -29,14 +29,14 @@ export function getDocuments(
   sessionid: string;
   query: string;
 }[] {
-  const turndown = new TurndownService();
+  const td = new turndown();
   return sortBy(
     flatMap(response.results, (category: AlexandriaCategory) => {
       return map(
         category.category.documents,
         (document: AlexandriaDocument) => ({
           title: document.meta.title,
-          description: turndown.turndown(document.meta.description),
+          description: td.turndown(document.meta.description),
           confidence: document.confidence,
           category: category.category.description,
           uuid: document.uuid,
