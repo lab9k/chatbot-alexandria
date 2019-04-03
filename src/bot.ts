@@ -89,7 +89,6 @@ export class CityBot {
             });
           } else if (payload.type === 'download') {
             console.log('detected download button click');
-            throw 'Not implemented';
             await this.questionDialog.sendFile(
               dialogContext,
               payload.value.uuid,
@@ -104,29 +103,6 @@ export class CityBot {
         }
         await dialogContext.continueDialog();
         break;
-      // const value = JSON.parse(dialogContext.context.activity.value || '{}');
-      // if (value.type === 'feedback') {
-      //   await dialogContext.context.sendActivity(
-      //     `Merci voor de feedback: ${value.value.state} op document: ${
-      //       value.value.uuid
-      //     } en sessionId: ${value.value.sessionid}`,
-      //   );
-      //   const airtableApi = new AirtableApi();
-      //   airtableApi.addLine({
-      //     document: value.value.uuid,
-      //     feedback: value.value.state,
-      //     question: value.value.query,
-      //     sessionid: value.value.sessionid,
-      //   });
-      // } else if (value.type === 'download') {
-      //   console.log('detected download button click');
-      //   throw 'Not implemented';
-      //   await this.questionDialog.sendFile(dialogContext, value.value.uuid);
-      //   await dialogContext.repromptDialog();
-      // } else if (dialogContext.context.activity.text) {
-      //   await dialogContext.continueDialog();
-      // }
-      // break;
       default:
         const value = JSON.parse(dialogContext.context.activity.value || '{}');
         if (value.type === 'feedback') {
@@ -144,7 +120,6 @@ export class CityBot {
           });
         } else if (value.type === 'download') {
           console.log('detected download button click');
-          throw 'Not implemented';
           await this.questionDialog.sendFile(dialogContext, value.value.uuid);
           await dialogContext.repromptDialog();
         } else if (dialogContext.context.activity.text) {

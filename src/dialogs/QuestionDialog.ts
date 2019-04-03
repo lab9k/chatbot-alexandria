@@ -21,7 +21,7 @@ import { readFileSync } from 'fs';
 import { ChannelId } from '../models/ChannelIds';
 import { FacebookCardBuilder, FacebookCard } from '../models/FacebookCard';
 import nodeFetch from 'node-fetch';
-import * as FormData from 'form-data';
+import formData from 'form-data';
 import AlexandriaQueryResponse, {
   getDocuments,
 } from '../models/AlexandriaQueryResponse';
@@ -106,7 +106,7 @@ export default class QuestionDialog extends WaterfallDialog {
               `${doc.description}`,
               {
                 type: 'postback',
-                title: 'Download pdf //TODO',
+                title: 'Download pdf',
                 payload: JSON.stringify({
                   type: 'download',
                   value: {
@@ -153,7 +153,7 @@ export default class QuestionDialog extends WaterfallDialog {
             [
               {
                 type: 'messageBack',
-                title: 'download document //TODO',
+                title: 'download document',
                 value: JSON.stringify({
                   type: 'download',
                   value: {
@@ -200,19 +200,16 @@ export default class QuestionDialog extends WaterfallDialog {
 
   public async sendFile(
     dialogContext: DialogContext,
-    payload: { content: string },
+    uuid: string,
   ): Promise<any> {
-    const resourceUri: string = payload.content;
-
     console.log('downloading');
-    const ret = await this.api.downloadFile(resourceUri);
+    const ret = await this.api.downloadFile(uuid);
 
     const filedata = readFileSync(`./downloads/${ret.filename}`);
     const base64file = Buffer.from(filedata).toString('base64');
 
-    // TODO: split fb and other channels
     if (dialogContext.context.activity.channelId === ChannelId.Facebook) {
-      const fd = new FormData();
+      const fd = new formData();
       fd.append('file', ret.buffer, {
         filename: ret.filename,
         contentType: ret.contentType,

@@ -1,5 +1,5 @@
 import nodeFetch from 'node-fetch';
-import * as download from 'download';
+import download from 'download';
 import AlexandriaQueryResponse from '../models/AlexandriaQueryResponse';
 
 export default class AlexandriaApi {
@@ -38,19 +38,27 @@ export default class AlexandriaApi {
     return key;
   }
 
-  public async downloadFile(resourceUri: string) {
-    const headers = await nodeFetch(resourceUri, {
+  public async downloadFile(uuid: string) {
+    const uri = `${this.baseUrl}/documents/${uuid}`;
+    const resp = await nodeFetch(uri, {
       headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
         'AW-API-KEY': `${this.getCredentials()}`,
       },
-    }).then(res => res.headers);
-
+    });
+    const documentDetailsBody = await resp.json();
+    const dlUri = `${this.baseUrl}${documentDetailsBody.file.uri}`;
+    console.log(dlUri);
+    const { headers } = await nodeFetch(dlUri, {
+      headers: {
+        'AW-API-KEY': `${this.getCredentials()}`,
+      },
+    });
+    console.log(headers);
     const contentDisposition = headers.get('content-disposition');
     const attachment = contentDisposition.split('; ');
-    const filename = attachment[1].split(' = ')[1];
-    const trimmedFileName = filename.substring(1, filename.length - 1);
+    const filename = attachment[1].split('=')[1];
+    const trimmedFileName = filename.trim();
+    console.log(trimmedFileName);
     const contentType = headers.get('content-type');
 
     const dlOptions: download.DownloadOptions = {
@@ -63,7 +71,7 @@ export default class AlexandriaApi {
     };
     return {
       contentType: contentType.split(';')[0],
-      buffer: await download(resourceUri, './downloads', dlOptions),
+      buffer: await download(dlUri, './downloads', dlOptions),
       filename: trimmedFileName,
     };
   }
