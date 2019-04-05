@@ -73,7 +73,6 @@ export class CityBot {
           const payload = JSON.parse(
             dialogContext.context.activity.channelData.postback.payload,
           );
-          console.log('\n', payload, '\n');
           if (payload.type === 'feedback') {
             await dialogContext.context.sendActivity(
               `Merci voor de feedback: ${payload.value.state} op document: ${

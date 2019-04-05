@@ -666,7 +666,7 @@
         "signature": "2569a60a55851f2747f35c241226eb158655c1d36fd16f8fbf95110e29bea142"
       },
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/bot.ts": {
-        "version": "94d035d647a9ee50b6a7f7fb608bca8f87134684ad3741964f2e7968100d5e43",
+        "version": "74443480f082a51c5539e4f0b28220ffafb26497cf5105026ac4929e4558ba74",
         "signature": "d803852a9445e69827ef1be7968ae6369a2ba91298fd25a1716a18fa943fbd08"
       },
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/@types/dotenv/index.d.ts": {
@@ -2680,9 +2680,9 @@
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/models/channelids.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/models/facebookcard.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/@types/form-data/index.d.ts",
+      "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/dialogs/questiondialog.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/dialogs/correctconceptprompt.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/api/airtableapi.ts",
-      "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/bot.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/@types/dotenv/index.d.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/@types/bunyan/index.d.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/@types/spdy/index.d.ts",
@@ -2707,7 +2707,7 @@
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/botframework-config/lib/botrecipe.d.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/node_modules/botframework-config/lib/index.d.ts",
       "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/index.ts",
-      "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/dialogs/questiondialog.ts"
+      "/users/willemje/documents/digipolis/dev/chatbot-alexandria/src/bot.ts"
     ]
   },
   "version": "3.4.1"
