@@ -64,7 +64,7 @@ export default new class {
       'Kan je de vraag op een andere manier stellen zodat ik in het juiste domein ga zoeken?',
       'Gelieve de vraag iets specifieker te maken, zodat ik op de juiste plek ga zoeken',
     ],
-    default: [],
+    default: ['Geen vertaling toegevoegd'],
   };
 
   // private get data() {

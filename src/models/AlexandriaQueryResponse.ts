@@ -20,6 +20,7 @@ export default interface AlexandriaQueryResponse {
 
 export function getDocuments(
   response: AlexandriaQueryResponse,
+  category: string,
 ): {
   title: string;
   description: string;
@@ -31,20 +32,23 @@ export function getDocuments(
 }[] {
   const td = new turndown();
   return sortBy(
-    flatMap(response.results, (category: AlexandriaCategory) => {
-      return map(
-        category.category.documents,
-        (document: AlexandriaDocument) => ({
-          title: document.meta.title,
-          description: td.turndown(document.meta.description),
-          confidence: document.confidence,
-          category: category.category.description,
-          uuid: document.uuid,
-          sessionid: response.sessionid,
-          query: response.query,
-        }),
-      );
-    }),
+    flatMap(
+      response.results.filter(c => c.category.description === category),
+      (category: AlexandriaCategory) => {
+        return map(
+          category.category.documents,
+          (document: AlexandriaDocument) => ({
+            title: document.meta.title,
+            description: td.turndown(document.meta.description),
+            confidence: document.confidence,
+            category: category.category.description,
+            uuid: document.uuid,
+            sessionid: response.sessionid,
+            query: response.query,
+          }),
+        );
+      },
+    ),
     'confidence',
   );
 }

@@ -34,6 +34,7 @@ export class CityBot {
       new FeedbackPrompt(),
       new ChoicePrompt('confirm_prompt'),
       new CorrectConceptPrompt(),
+      new ChoicePrompt('choice_prompt'),
     ].forEach(dialog => {
       this.dialogs.add(dialog);
     });

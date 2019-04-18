@@ -2,6 +2,8 @@ import {
   WaterfallDialog,
   WaterfallStepContext,
   DialogContext,
+  Choice,
+  ChoiceFactory,
 } from 'botbuilder-dialogs';
 import {
   MessageFactory,
@@ -25,6 +27,7 @@ import formData from 'form-data';
 import AlexandriaQueryResponse, {
   getDocuments,
 } from '../models/AlexandriaQueryResponse';
+import CorrectConceptPrompt from './CorrectConceptPrompt';
 
 export default class QuestionDialog extends WaterfallDialog {
   public static readonly ID = 'question_dialog';
@@ -45,7 +48,9 @@ export default class QuestionDialog extends WaterfallDialog {
     // ? Send the documents
     await sctx.context.sendActivity(lang.getStringFor(lang.WAIT_WHILE_FETCH));
 
-    await sctx.context.sendActivity({ type: ActivityTypes.Typing });
+    await sctx.context.sendActivity({
+      type: ActivityTypes.Typing,
+    });
     const resolved: AlexandriaQueryResponse = await this.api.query(
       sctx.context.activity.text,
     );
@@ -63,38 +68,69 @@ export default class QuestionDialog extends WaterfallDialog {
     await this.docsAccessor.set(sctx.context, resolved);
 
     // ? ask if concept is correct
-    if (true) {
+    const categories = resolved.results.map(r => r.category.description);
+    if (categories.length <= 0) {
       console.log('no concepts, skipping question');
       await sctx.next();
       return await this.handleConcept(sctx, true);
     }
+
+    await this.waitFor(sctx, async () => {
+      const choices = ChoiceFactory.heroCard(
+        categories.map(c => ({ value: c })),
+      );
+      await sctx.context.sendActivity(
+        'Gelieve de juiste categorie te selecteren',
+      );
+      await sctx.context.sendActivity(choices);
+      // await sctx.prompt('choice_prompt', {
+      //   choices,
+      //   prompt: `Please select the correct category`,
+      //   retryPrompt: 'Please use the buttons',
+      //   suggestedActions: choices,
+      // });
+    });
+    //  // ? ask if concept is correct
+    //  if (!resolved.conceptsOfQuery) {
+    //   console.log('no concepts, skipping question');
+    //   await sctx.next();
+    //   return await this.handleConcept(sctx, true);
+    // }
+
+    // await this.waitFor(sctx, async () => {
+    //   const formatConcepts = (conceptsArray: string[]) =>
+    //     conceptsArray.map(concept => conceptMapping(concept)).join(', ');
+    //   await sctx.prompt(CorrectConceptPrompt.ID, {
+    //     prompt: lang
+    //       .getStringFor(lang.ASK_CORRECT_CONCEPTS)
+    //       .replace('%1%', formatConcepts(resolved.conceptsOfQuery || [])),
+    //     retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
+    //   });
+    // });
   }
 
   private async handleConcept(sctx: WaterfallStepContext, skipped?: boolean) {
     const answer = sctx.context.activity.text;
-    if (answer === ConfirmTypes.POSITIVE || skipped) {
-      const resolved: AlexandriaQueryResponse = await this.docsAccessor.get(
-        sctx.context,
-      );
-      const docs = getDocuments(resolved);
+    const resolved: AlexandriaQueryResponse = await this.docsAccessor.get(
+      sctx.context,
+    );
+    const categories = resolved.results.map(r => r.category.description);
+    if (categories.includes(answer) || skipped) {
+      const docs = getDocuments(resolved, answer);
       if (sctx.context.activity.channelId === ChannelId.Facebook) {
         const fbCardBuilder = new FacebookCardBuilder();
         docs.forEach((doc, i) =>
           fbCardBuilder.addCard(
-            new FacebookCard(
-              `${doc.title}`,
-              `${doc.description}`,
-              {
-                type: 'postback',
-                title: 'Download pdf',
-                payload: JSON.stringify({
-                  type: 'download',
-                  value: {
-                    uuid: doc.uuid,
-                  },
-                }),
-              },
-            ),
+            new FacebookCard(`${doc.title}`, `${doc.description}`, {
+              type: 'postback',
+              title: 'Download pdf',
+              payload: JSON.stringify({
+                type: 'download',
+                value: {
+                  uuid: doc.uuid,
+                },
+              }),
+            }),
           ),
         );
         await sctx.context.sendActivity(fbCardBuilder.getData());
@@ -120,7 +156,7 @@ export default class QuestionDialog extends WaterfallDialog {
         });
         await sctx.context.sendActivity(MessageFactory.carousel(cards));
       }
-    } else if (answer === ConfirmTypes.NEGATIVE) {
+    } else {
       await sctx.context.sendActivity(lang.getStringFor(lang.REPHRASE));
       await sctx.endDialog();
     }
