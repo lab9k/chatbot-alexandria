@@ -11,7 +11,6 @@ import FeedbackPrompt from './dialogs/FeedbackPrompt';
 import lang from './lang';
 import CorrectConceptPrompt from './dialogs/CorrectConceptPrompt';
 import { ChannelId } from './models/ChannelIds';
-import AirtableApi from './api/AirtableApi';
 
 const DIALOG_STATE_PROPERTY = 'dialog_state_prop';
 export class CityBot {
@@ -73,20 +72,7 @@ export class CityBot {
           const payload = JSON.parse(
             dialogContext.context.activity.channelData.postback.payload,
           );
-          if (payload.type === 'feedback') {
-            await dialogContext.context.sendActivity(
-              `Merci voor de feedback: ${payload.value.state} op document: ${
-                payload.value.uuid
-              } en sessionId: ${payload.value.sessionid}`,
-            );
-            const airtableAPI = new AirtableApi();
-            airtableAPI.addLine({
-              document: payload.value.uuid,
-              feedback: payload.value.state,
-              question: payload.value.query,
-              sessionid: payload.value.sessionid,
-            });
-          } else if (payload.type === 'download') {
+          if (payload.type === 'download') {
             console.log('detected download button click');
             await this.questionDialog.sendFile(
               dialogContext,
@@ -104,20 +90,7 @@ export class CityBot {
         break;
       default:
         const value = JSON.parse(dialogContext.context.activity.value || '{}');
-        if (value.type === 'feedback') {
-          await dialogContext.context.sendActivity(
-            `Merci voor de feedback: ${value.value.state} op document: ${
-              value.value.uuid
-            } en sessionId: ${value.value.sessionid}`,
-          );
-          const airtableApi = new AirtableApi();
-          airtableApi.addLine({
-            document: value.value.uuid,
-            feedback: value.value.state,
-            question: value.value.query,
-            sessionid: value.value.sessionid,
-          });
-        } else if (value.type === 'download') {
+        if (value.type === 'download') {
           console.log('detected download button click');
           await this.questionDialog.sendFile(dialogContext, value.value.uuid);
           await dialogContext.repromptDialog();

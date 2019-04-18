@@ -38,8 +38,6 @@ export default class QuestionDialog extends WaterfallDialog {
     );
     this.addStep(this.handleQuestion.bind(this));
     this.addStep(this.handleConcept.bind(this));
-    // this.addStep(this.handleFeedback.bind(this));
-    // this.addStep(this.handlePersonRequest.bind(this));
     this.api = new AlexandriaApi();
   }
 
