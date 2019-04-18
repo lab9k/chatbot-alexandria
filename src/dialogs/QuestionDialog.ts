@@ -70,24 +70,6 @@ export default class QuestionDialog extends WaterfallDialog {
       await sctx.next();
       return await this.handleConcept(sctx, true);
     }
-
-    // await this.waitFor(sctx, async () => {
-    //   const formatConcepts = (conceptsArray: string[]) =>
-    //     conceptsArray
-    //       .map(concept =>
-    //         concept
-    //           .toLowerCase()
-    //           .split('_')
-    //           .join(' '),
-    //       )
-    //       .join(', ');
-    //   await sctx.prompt(CorrectConceptPrompt.ID, {
-    //     prompt: lang
-    //       .getStringFor(lang.ASK_CORRECT_CONCEPTS)
-    //       .replace('%1%', formatConcepts(resolved.conceptsOfQuery || [])),
-    //     retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-    //   });
-    // });
   }
 
   private async handleConcept(sctx: WaterfallStepContext, skipped?: boolean) {
@@ -114,32 +96,6 @@ export default class QuestionDialog extends WaterfallDialog {
                   },
                 }),
               },
-              {
-                type: 'postback',
-                title: 'Nuttig',
-                payload: JSON.stringify({
-                  type: 'feedback',
-                  value: {
-                    uuid: doc.uuid,
-                    state: true,
-                    sessionid: doc.sessionid,
-                    query: doc.query,
-                  },
-                }),
-              },
-              {
-                type: 'postback',
-                title: 'Niet Nuttig',
-                payload: JSON.stringify({
-                  type: 'feedback',
-                  value: {
-                    uuid: doc.uuid,
-                    state: false,
-                    sessionid: doc.sessionid,
-                    query: doc.query,
-                  },
-                }),
-              },
             ),
           ),
         );
@@ -158,32 +114,6 @@ export default class QuestionDialog extends WaterfallDialog {
                   type: 'download',
                   value: {
                     uuid: document.uuid,
-                  },
-                }),
-              },
-              {
-                type: 'messageBack',
-                title: 'Nuttig',
-                value: JSON.stringify({
-                  type: 'feedback',
-                  value: {
-                    uuid: document.uuid,
-                    state: true,
-                    sessionid: document.sessionid,
-                    query: document.query,
-                  },
-                }),
-              },
-              {
-                type: 'messageBack',
-                title: 'Niet Nuttig',
-                value: JSON.stringify({
-                  type: 'feedback',
-                  value: {
-                    uuid: document.uuid,
-                    state: false,
-                    sessionid: document.sessionid,
-                    query: document.query,
                   },
                 }),
               },
@@ -251,41 +181,4 @@ export default class QuestionDialog extends WaterfallDialog {
       },         Math.random() * 1000 + 1000);
     });
   }
-  // private async handleFeedback(sctx: WaterfallStepContext) {
-  //   const answer = sctx.context.activity.text;
-  //   if (answer === FeedbackTypes.GOOD) {
-  //     await sctx.context.sendActivity(lang.getStringFor(lang.THANK_FEEDBACK));
-  //     await this.waitFor(sctx, async () => {
-  //       await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
-  //     });
-  //     await sctx.endDialog();
-  //   }
-  //   if (answer === FeedbackTypes.BAD) {
-  //     await sctx.prompt('confirm_prompt', {
-  //       prompt: lang.getStringFor(lang.REAL_PERSON),
-  //       retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-  //       choices: [lang.POSITIVE, lang.NEGATIVE],
-  //     });
-  //   }
-  // }
-
-  // public async askFeedback(sctx: DialogContext): Promise<any> {
-  //   await this.waitFor(sctx, async () => {
-  //     await sctx.prompt(FeedbackPrompt.ID, {
-  //       prompt: lang.getStringFor(lang.USEFULLNESS_QUERY),
-  //       retryPrompt: lang.getStringFor(lang.NOT_UNDERSTOOD_USE_BUTTONS),
-  //     });
-  //   });
-  // }
-
-  // private async handlePersonRequest(sctx: WaterfallStepContext) {
-  //   if (
-  //     sctx.context.activity.text.toUpperCase() === lang.POSITIVE.toUpperCase()
-  //   ) {
-  //     await sctx.context.sendActivity(lang.getStringFor(lang.EMAIL_SENT));
-  //   } else {
-  //     await sctx.context.sendActivity(lang.getStringFor(lang.MORE_QUESTIONS));
-  //   }
-  //   await sctx.endDialog();
-  // }
 }
