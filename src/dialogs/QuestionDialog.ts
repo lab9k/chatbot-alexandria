@@ -202,8 +202,28 @@ export default class QuestionDialog extends WaterfallDialog {
         },
       ],
     };
-
-    return await dialogContext.context.sendActivity(reply);
+    try {
+      return await dialogContext.context.sendActivity(reply);
+    } catch (error) {
+      const fd = new formData();
+      fd.append('file', ret.buffer, {
+        filename: ret.filename,
+        contentType: ret.contentType,
+      });
+      return nodeFetch('http://file.io/?expires=1d', {
+        method: 'POST',
+        body: fd,
+      })
+        .then(async res => res.json())
+        .then(async res => {
+          await dialogContext.context.sendActivity(
+            'Het bestand is te groot. Ik stuur je de downloadlink onmiddelijk door.',
+          );
+          return this.waitFor(dialogContext, async () => {
+            return await dialogContext.context.sendActivity(`${res.link}`);
+          });
+        });
+    }
   }
 
   private async waitFor(sctx: DialogContext, cb: Function): Promise<any> {
